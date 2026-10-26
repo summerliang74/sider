@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListOnlyApplicationPrefixes",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::replace-with-bucket"],
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": ["pending/*", "active/*", "quarantine/*"]
+        }
+      }
+    },
+    {
+      "Sid": "ManageOnlyApplicationObjects",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": [
+        "arn:aws:s3:::replace-with-bucket/pending/*",
+        "arn:aws:s3:::replace-with-bucket/active/*",
+        "arn:aws:s3:::replace-with-bucket/quarantine/*"
+      ]
+    }
+  ]
+}

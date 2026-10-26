@@ -1,0 +1,78 @@
+"use client";
+
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+
+import type { ResourceListItem } from "@/src/lib/resources";
+import { BotChallenge } from "./bot-challenge";
+import { ResourceList } from "./resource-list";
+
+type ApiItem = Omit<ResourceListItem, "publishedAt"> & { publishedAt: string };
+type PendingSearch = { query: string; cursor?: string };
+
+export function SearchHub({ initialQuery }: { initialQuery: string }) {
+  const [query, setQuery] = useState(initialQuery);
+  const [items, setItems] = useState<ResourceListItem[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState<PendingSearch | null>(null);
+
+  const load = useCallback(async (targetQuery: string, cursor?: string, botToken?: string) => {
+    setLoading(true);
+    setError("");
+    const params = new URLSearchParams();
+    if (targetQuery) params.set("q", targetQuery);
+    if (cursor) params.set("cursor", cursor);
+    const response = await fetch(`/api/resources?${params.toString()}`, {
+      headers: botToken ? { "x-bot-token": botToken } : undefined,
+      cache: "no-store",
+    });
+    const result = await response.json() as { items?: ApiItem[]; nextCursor?: string | null; error?: string };
+    if (result.error === "bot_challenge_required") {
+      setPending({ query: targetQuery, cursor });
+      setError("Please complete the traffic check to continue searching.");
+      setLoading(false);
+      return;
+    }
+    if (!response.ok || !result.items) {
+      setError(result.error === "rate_limited" ? "Too many searches. Please wait and try again." : "Search is temporarily unavailable.");
+      setLoading(false);
+      return;
+    }
+    const normalized = result.items.map((item) => ({ ...item, publishedAt: new Date(item.publishedAt) }));
+    setItems(cursor ? (current) => [...current, ...normalized] : normalized);
+    setNextCursor(result.nextCursor ?? null);
+    setPending(null);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(initialQuery), 0);
+    return () => window.clearTimeout(timer);
+  }, [initialQuery, load]);
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const nextQuery = String(form.get("q") ?? "").trim().slice(0, 120);
+    setQuery(nextQuery);
+    window.history.replaceState(null, "", nextQuery ? `/resources?q=${encodeURIComponent(nextQuery)}` : "/resources");
+    void load(nextQuery);
+  }
+
+  return <>
+    <form className="searchbox" onSubmit={submit} role="search">
+      <span aria-hidden="true">⌕</span>
+      <label className="sr-only" htmlFor="resource-search">Search resources</label>
+      <input id="resource-search" name="q" defaultValue={initialQuery} maxLength={120} placeholder="Search titles, descriptions, tags, or file names…" autoComplete="off" />
+      <button type="submit" disabled={loading}>Search</button>
+    </form>
+    <p className="search-caption"><span>{query ? `Results for “${query}”` : "Recently published resources"}</span><span>Only scanned, active files appear here</span></p>
+    <div className="toolbar"><h2>{query ? "Search results" : "Latest resources"}<span>{items.length} shown</span></h2><div className="toolbar-actions"><span className="muted">{query ? "Relevant first" : "Newest first"}</span><Link className="button" href="/resources/new">Upload</Link></div></div>
+    {pending ? <div className="challenge"><p>{error}</p><BotChallenge action="search" onToken={(token) => { if (token) void load(pending.query, pending.cursor, token); }} /></div> : null}
+    {!pending && error ? <p className="form-error" role="alert">{error}</p> : null}
+    {loading && items.length === 0 ? <div className="empty"><p>Loading resources…</p></div> : <ResourceList items={items} />}
+    {nextCursor ? <div className="pagination"><button className="button" type="button" disabled={loading} onClick={() => void load(query, nextCursor)}>{loading ? "Loading…" : "Load more"}</button></div> : null}
+  </>;
+}

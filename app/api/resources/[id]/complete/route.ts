@@ -1,0 +1,39 @@
+import { z } from "zod";
+
+import { getCurrentUser } from "@/src/lib/auth/session";
+import { noStoreJson } from "@/src/lib/http";
+import { completeUpload } from "@/src/lib/resources-write";
+import { verifyBotChallenge } from "@/src/lib/security/bot";
+import { enforceIpRateLimit, enforceUserRateLimit } from "@/src/lib/security/rate-limit";
+import { getClientIp, requireSameOrigin } from "@/src/lib/security/request";
+import { securityErrorResponse } from "@/src/lib/security/responses";
+
+const bodySchema = z.object({ botToken: z.string().max(4096).optional() });
+
+export const maxDuration = 120;
+
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  if (!requireSameOrigin(request)) return noStoreJson({ error: "forbidden" }, { status: 403 });
+  const ip = getClientIp(request);
+  try {
+    const ipLimit = await enforceIpRateLimit("complete", ip);
+    const user = await getCurrentUser();
+    if (!user) return noStoreJson({ error: "unauthorized" }, { status: 401 });
+    const userLimit = await enforceUserRateLimit("complete", user.id);
+    const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
+    if (!parsed.success) return noStoreJson({ error: "invalid_request" }, { status: 400 });
+    await verifyBotChallenge({ required: ipLimit.risky || userLimit.risky, token: parsed.data.botToken, action: "complete", ip });
+    const { id } = await context.params;
+    if (!z.uuid().safeParse(id).success) return noStoreJson({ error: "resource_unavailable" }, { status: 404 });
+    try {
+      const result = await completeUpload(id, user);
+      if (!result) return noStoreJson({ error: "resource_unavailable" }, { status: 404 });
+      return noStoreJson(result);
+    } catch (error) {
+      if (error instanceof Error && ["object_missing", "object_mismatch"].includes(error.message)) return noStoreJson({ error: error.message }, { status: 409 });
+      throw error;
+    }
+  } catch (error) {
+    return securityErrorResponse(error) ?? noStoreJson({ error: "completion_unavailable" }, { status: 503 });
+  }
+}

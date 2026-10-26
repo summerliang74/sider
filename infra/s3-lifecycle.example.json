@@ -1,0 +1,11 @@
+{
+  "Rules": [
+    {
+      "ID": "expire-abandoned-pending-objects",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "pending/" },
+      "Expiration": { "Days": 2 },
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
+    }
+  ]
+}

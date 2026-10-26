@@ -1,0 +1,8 @@
+[
+  {
+    "AllowedOrigins": ["https://replace-with-production-origin.invalid"],
+    "AllowedMethods": ["GET", "PUT", "HEAD"],
+    "AllowedHeaders": ["content-type", "x-amz-meta-resource"],
+    "MaxAgeSeconds": 300
+  }
+]

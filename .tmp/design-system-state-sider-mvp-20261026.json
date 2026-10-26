@@ -1,0 +1,32 @@
+{
+  "runId": "sider-mvp-20261026",
+  "fileKey": "vwpPHAffndmfUcPC8eR5Dy",
+  "sessionId": "4208245a-b465-4c60-bd6d-9eb205d699ae",
+  "scope": "notion-style-mvp-screens-and-local-components",
+  "step": "paused-figma-starter-mcp-rate-limit",
+  "entities": {
+    "collections": {},
+    "variables": {},
+    "styles": {},
+    "pages": {},
+    "components": {},
+    "screens": {}
+  },
+  "pendingValidations": [
+    "foundations-structure",
+    "components-structure",
+    "screens-visual",
+    "font-family",
+    "prompt-style-checklist"
+  ],
+  "blocker": "Figma MCP Starter-plan tool call limit reached before the first successful canvas mutation.",
+  "completedSteps": [
+    "prompt-read",
+    "file-created",
+    "session-created",
+    "code-connect-check-none",
+    "existing-screen-inspection-empty",
+    "library-discovery",
+    "design-system-search"
+  ]
+}

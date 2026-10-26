@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      APP_BASE_URL: https://app.shsid.test
+      SESSION_SECRET: 0123456789abcdef0123456789abcdef
+      SESSION_TOKEN_PEPPER: abcdef0123456789abcdef0123456789
+      DATABASE_URL: postgresql://user:pass@db.shsid.test:5432/shsid?sslmode=require
+      SHSID_ALLOWED_ORGS: confirmed-org
+      SHSID_ADMIN_SUBS: confirmed-admin-sub
+      LAUNCHPAD_OIDC_DEV: "0"
+      S3_ENDPOINT: https://s3.shsid.test
+      S3_REGION: auto
+      S3_BUCKET: shsid-private
+      S3_ACCESS_KEY_ID: ci-access-key
+      S3_SECRET_ACCESS_KEY: ci-secret-key
+      S3_FORCE_PATH_STYLE: "false"
+      RATE_LIMIT_URL: https://redis.shsid.test
+      RATE_LIMIT_TOKEN: ci-rate-limit-token
+      TRUSTED_CLIENT_IP_HEADER: x-real-ip
+      NEXT_PUBLIC_BOT_SITE_KEY: ci-site-key
+      BOT_VERIFY_URL: https://bot.shsid.test/verify
+      BOT_VERIFY_SECRET: ci-bot-secret-value
+      MALWARE_SCAN_URL: https://scanner.shsid.test/scan
+      MALWARE_SCAN_TOKEN: ci-scan-token-value
+      CRON_SECRET: fedcba9876543210fedcba9876543210
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run db:check
+      - run: npm run build
