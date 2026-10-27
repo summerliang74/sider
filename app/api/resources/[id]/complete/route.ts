@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { getCurrentUser } from "@/src/lib/auth/session";
+import { getServerEnv } from "@/src/lib/env";
 import { noStoreJson } from "@/src/lib/http";
 import { completeUpload } from "@/src/lib/resources-write";
 import { verifyBotChallenge } from "@/src/lib/security/bot";
@@ -14,6 +15,7 @@ export const maxDuration = 120;
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   if (!requireSameOrigin(request)) return noStoreJson({ error: "forbidden" }, { status: 403 });
+  if (!getServerEnv().malwareScanEnabled) return noStoreJson({ error: "uploads_disabled" }, { status: 503 });
   const ip = getClientIp(request);
   try {
     const ipLimit = await enforceIpRateLimit("complete", ip);

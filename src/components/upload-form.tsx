@@ -103,6 +103,7 @@ function readableError(error?: string): string {
     file_type_not_allowed: "This file type is not allowed.",
     bot_challenge_required: "Additional verification is required because this request looks unusual.",
     rate_limited: "Too many requests. Please wait and try again.",
+    uploads_disabled: "Uploads are unavailable until the malware scanning service is configured.",
   };
   return messages[error ?? ""] ?? "The request could not be completed. Please try again.";
 }

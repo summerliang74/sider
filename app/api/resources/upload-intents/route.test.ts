@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   currentUser: vi.fn(),
   bot: vi.fn(),
   createIntent: vi.fn(),
+  env: vi.fn(),
 }));
 
 vi.mock("@/src/lib/security/request", () => ({
@@ -18,7 +19,7 @@ vi.mock("@/src/lib/security/responses", () => ({ securityErrorResponse: () => nu
 vi.mock("@/src/lib/security/bot", () => ({ verifyBotChallenge: mocks.bot }));
 vi.mock("@/src/lib/auth/session", () => ({ getCurrentUser: mocks.currentUser }));
 vi.mock("@/src/lib/resources-write", () => ({ createUploadIntent: mocks.createIntent }));
-vi.mock("@/src/lib/env", () => ({ getServerEnv: () => ({ UPLOAD_MAX_BYTES: 1024 }) }));
+vi.mock("@/src/lib/env", () => ({ getServerEnv: mocks.env }));
 
 import { POST } from "./route";
 
@@ -41,6 +42,7 @@ describe("POST /api/resources/upload-intents", () => {
     mocks.currentUser.mockResolvedValue(user);
     mocks.bot.mockResolvedValue(undefined);
     mocks.createIntent.mockResolvedValue({ resourceId: user.id, uploadUrl: "https://storage.test/signed", expiresIn: 300, headers: { "content-type": "application/pdf" } });
+    mocks.env.mockReturnValue({ UPLOAD_MAX_BYTES: 1024, malwareScanEnabled: true });
   });
 
   it("rejects cross-origin writes before limits, session lookup, or storage work", async () => {
@@ -55,6 +57,16 @@ describe("POST /api/resources/upload-intents", () => {
   it("rejects an oversized file before creating a database or storage intent", async () => {
     const response = await POST(uploadRequest({ ...validBody, sizeBytes: 1025 }));
     expect(response.status).toBe(413);
+    expect(mocks.createIntent).not.toHaveBeenCalled();
+  });
+
+  it("fails closed before limits, session lookup, or storage work when scanning is disabled", async () => {
+    mocks.env.mockReturnValue({ UPLOAD_MAX_BYTES: 1024, malwareScanEnabled: false });
+    const response = await POST(uploadRequest());
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "uploads_disabled" });
+    expect(mocks.ipLimit).not.toHaveBeenCalled();
+    expect(mocks.currentUser).not.toHaveBeenCalled();
     expect(mocks.createIntent).not.toHaveBeenCalled();
   });
 

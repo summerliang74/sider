@@ -39,8 +39,8 @@ const serverEnvSchema = z
     NEXT_PUBLIC_BOT_SITE_KEY: z.string().min(1),
     BOT_VERIFY_URL: z.url(),
     BOT_VERIFY_SECRET: z.string().min(16),
-    MALWARE_SCAN_URL: z.url(),
-    MALWARE_SCAN_TOKEN: z.string().min(16),
+    MALWARE_SCAN_URL: z.union([z.url(), z.literal("disabled")]),
+    MALWARE_SCAN_TOKEN: z.union([z.string().min(16), z.literal("disabled")]),
     MALWARE_SCAN_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(30_000),
     CRON_SECRET: z.string().min(32),
     RESOURCE_DELETE_RETENTION_DAYS: z.coerce.number().int().min(0).max(90).default(7),
@@ -48,6 +48,15 @@ const serverEnvSchema = z
   .superRefine((env, context) => {
     const appUrl = new URL(env.APP_BASE_URL);
     const isLocalhost = ["localhost", "127.0.0.1", "[::1]"].includes(appUrl.hostname);
+    const scannerUrlDisabled = env.MALWARE_SCAN_URL === "disabled";
+    const scannerTokenDisabled = env.MALWARE_SCAN_TOKEN === "disabled";
+    if (scannerUrlDisabled !== scannerTokenDisabled) {
+      context.addIssue({
+        code: "custom",
+        path: [scannerUrlDisabled ? "MALWARE_SCAN_TOKEN" : "MALWARE_SCAN_URL"],
+        message: "must also be disabled when the other malware scanner setting is disabled",
+      });
+    }
     if (appUrl.pathname !== "/" || appUrl.search || appUrl.hash || appUrl.username || appUrl.password) {
       context.addIssue({ code: "custom", path: ["APP_BASE_URL"], message: "must be an origin without a path, query, fragment, or credentials" });
     }
@@ -88,19 +97,24 @@ const serverEnvSchema = z
         ["NEXT_PUBLIC_BOT_SITE_KEY", env.NEXT_PUBLIC_BOT_SITE_KEY],
         ["BOT_VERIFY_URL", env.BOT_VERIFY_URL],
         ["BOT_VERIFY_SECRET", env.BOT_VERIFY_SECRET],
-        ["MALWARE_SCAN_URL", env.MALWARE_SCAN_URL],
-        ["MALWARE_SCAN_TOKEN", env.MALWARE_SCAN_TOKEN],
         ["CRON_SECRET", env.CRON_SECRET],
       ];
+      if (!scannerUrlDisabled && !scannerTokenDisabled) {
+        productionValues.push(["MALWARE_SCAN_URL", env.MALWARE_SCAN_URL]);
+        productionValues.push(["MALWARE_SCAN_TOKEN", env.MALWARE_SCAN_TOKEN]);
+      }
       for (const [path, value] of productionValues) {
         if (/replace|change-me|\.example/i.test(value)) {
           context.addIssue({ code: "custom", path: [path], message: "must not be a placeholder in production" });
         }
       }
-      for (const key of ["S3_ENDPOINT", "RATE_LIMIT_URL", "BOT_VERIFY_URL", "MALWARE_SCAN_URL"] as const) {
+      for (const key of ["S3_ENDPOINT", "RATE_LIMIT_URL", "BOT_VERIFY_URL"] as const) {
         if (new URL(env[key]).protocol !== "https:") {
           context.addIssue({ code: "custom", path: [key], message: "must use HTTPS in production" });
         }
+      }
+      if (!scannerUrlDisabled && new URL(env.MALWARE_SCAN_URL).protocol !== "https:") {
+        context.addIssue({ code: "custom", path: ["MALWARE_SCAN_URL"], message: "must use HTTPS in production" });
       }
     } else if (appUrl.protocol !== "https:" && !(appUrl.protocol === "http:" && isLocalhost)) {
       context.addIssue({
@@ -123,6 +137,7 @@ const serverEnvSchema = z
       ? null
       : env.LAUNCHPAD_ORG_DISCOVERY_EMAIL.toLowerCase(),
     s3ForcePathStyle: env.S3_FORCE_PATH_STYLE === "true",
+    malwareScanEnabled: env.MALWARE_SCAN_URL !== "disabled",
   }));
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

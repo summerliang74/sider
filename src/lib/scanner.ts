@@ -22,6 +22,9 @@ export type ScanResult = z.infer<typeof scanResponseSchema>;
 
 export async function scanObject(input: { resourceId: string; objectKey: string }): Promise<ScanResult> {
   const env = getServerEnv();
+  if (!env.malwareScanEnabled || env.MALWARE_SCAN_URL === "disabled") {
+    return { status: "error", message: "scanner_disabled" };
+  }
   const response = await fetch(env.MALWARE_SCAN_URL, {
     method: "POST",
     headers: {

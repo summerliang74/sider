@@ -10,6 +10,7 @@ import { securityErrorResponse } from "@/src/lib/security/responses";
 
 export async function POST(request: Request) {
   if (!requireSameOrigin(request)) return noStoreJson({ error: "forbidden" }, { status: 403 });
+  if (!getServerEnv().malwareScanEnabled) return noStoreJson({ error: "uploads_disabled" }, { status: 503 });
   const ip = getClientIp(request);
   try {
     const ipLimit = await enforceIpRateLimit("upload", ip);

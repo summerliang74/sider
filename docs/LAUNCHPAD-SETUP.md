@@ -46,6 +46,8 @@ RESOURCE_DELETE_RETENTION_DAYS
 
 Production values must include `LAUNCHPAD_OIDC_DEV=0`, an HTTPS `APP_BASE_URL`, and TLS endpoints. `NEXT_PUBLIC_BOT_SITE_KEY` is deliberately referenced at both build and runtime because Next.js inlines public variables during the build.
 
+For initial domain and Launchpad sign-in verification before the malware scanner is available, set both `MALWARE_SCAN_URL=disabled` and `secret://project/malware-scan-token=disabled`. This mode fails closed: upload-intent and completion endpoints return `503`, and the upload page explains that uploads are unavailable. Configure the real HTTPS scanner endpoint and token before enabling uploads or starting the student beta.
+
 ### One-time org/sub discovery
 
 When the exact Launchpad organization and subject are not known yet:
