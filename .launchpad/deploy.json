@@ -25,6 +25,7 @@
       { "name": "SESSION_TOKEN_PEPPER", "source": "secret", "ref": "secret://project/session-token-pepper" },
       { "name": "SESSION_TTL_SECONDS", "source": "variable", "ref": "SESSION_TTL_SECONDS" },
       { "name": "DATABASE_URL", "source": "secret", "ref": "secret://project/database-url" },
+      { "name": "DATABASE_URL_UNPOOLED", "source": "secret", "ref": "secret://project/database-url-unpooled" },
       { "name": "DATABASE_MAX_CONNECTIONS", "source": "variable", "ref": "DATABASE_MAX_CONNECTIONS" },
       { "name": "SHSID_ALLOWED_ORGS", "source": "variable", "ref": "SHSID_ALLOWED_ORGS" },
       { "name": "SHSID_ADMIN_SUBS", "source": "secret", "ref": "secret://project/shsid-admin-subs" },

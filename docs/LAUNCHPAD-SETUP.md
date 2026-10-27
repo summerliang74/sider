@@ -67,6 +67,7 @@ Create project secrets with these exact references:
 secret://project/session-secret
 secret://project/session-token-pepper
 secret://project/database-url
+secret://project/database-url-unpooled
 secret://project/shsid-admin-subs
 secret://project/s3-access-key-id
 secret://project/s3-secret-access-key

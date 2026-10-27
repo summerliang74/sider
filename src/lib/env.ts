@@ -132,7 +132,20 @@ let cachedEnv: ServerEnv | undefined;
 export function getServerEnv(): ServerEnv {
   if (cachedEnv) return cachedEnv;
 
-  const result = serverEnvSchema.safeParse(process.env);
+  // Prefer provider-neutral S3 names so a dedicated object store can override
+  // Neon-managed AWS variables that may still exist in a local environment.
+  const hasExplicitS3Config = Boolean(process.env.S3_ENDPOINT);
+  const resolvedEnv = {
+    ...process.env,
+    S3_ENDPOINT: hasExplicitS3Config ? process.env.S3_ENDPOINT : process.env.AWS_ENDPOINT_URL_S3,
+    S3_REGION: hasExplicitS3Config ? process.env.S3_REGION : process.env.AWS_REGION,
+    S3_ACCESS_KEY_ID: hasExplicitS3Config ? process.env.S3_ACCESS_KEY_ID : process.env.AWS_ACCESS_KEY_ID,
+    S3_SECRET_ACCESS_KEY: hasExplicitS3Config
+      ? process.env.S3_SECRET_ACCESS_KEY
+      : process.env.AWS_SECRET_ACCESS_KEY,
+    S3_FORCE_PATH_STYLE: process.env.S3_FORCE_PATH_STYLE ?? (hasExplicitS3Config ? "false" : "true"),
+  };
+  const result = serverEnvSchema.safeParse(resolvedEnv);
   if (!result.success) {
     const issues = result.error.issues
       .map((issue) => `${issue.path.join(".") || "environment"}: ${issue.message}`)

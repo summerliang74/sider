@@ -1,14 +1,14 @@
 import { defineConfig } from "drizzle-kit";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is required to run Drizzle commands");
-}
+const databaseUrl = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
+if (!databaseUrl) throw new Error("DATABASE_URL_UNPOOLED or DATABASE_URL is required to run Drizzle commands");
 
 export default defineConfig({
   dialect: "postgresql",
   schema: "./src/db/schema.ts",
   out: "./drizzle",
-  dbCredentials: { url: process.env.DATABASE_URL },
+  // Neon recommends a direct connection for schema migrations.
+  dbCredentials: { url: databaseUrl },
   strict: true,
   verbose: true,
 });
