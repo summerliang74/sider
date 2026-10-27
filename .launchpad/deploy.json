@@ -1,8 +1,8 @@
 {
   "runtime": "auto",
   "packageManager": "npm",
-  "installCommand": ["npm", "ci"],
-  "buildCommand": ["npm", "run", "build"],
+  "installCommand": ["npm", "ci", "--no-audit", "--no-fund", "--prefer-offline"],
+  "buildCommand": ["npm", "run", "build:launchpad"],
   "startCommand": ["npm", "start"],
   "releaseCommand": ["npm", "run", "db:migrate"],
   "healthPath": "/api/health",
@@ -13,6 +13,11 @@
   },
   "environment": {
     "build": [
+      {
+        "name": "LAUNCHPAD_FAST_BUILD",
+        "source": "variable",
+        "ref": "LAUNCHPAD_FAST_BUILD"
+      },
       {
         "name": "NEXT_PUBLIC_BOT_SITE_KEY",
         "source": "variable",

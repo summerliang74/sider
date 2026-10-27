@@ -21,6 +21,7 @@ Create project variables with these exact reference names:
 
 ```text
 APP_BASE_URL
+LAUNCHPAD_FAST_BUILD
 SESSION_TTL_SECONDS
 DATABASE_MAX_CONNECTIONS
 SHSID_ALLOWED_ORGS
@@ -45,6 +46,8 @@ RESOURCE_DELETE_RETENTION_DAYS
 ```
 
 Production values must include `LAUNCHPAD_OIDC_DEV=0`, an HTTPS `APP_BASE_URL`, and TLS endpoints. `NEXT_PUBLIC_BOT_SITE_KEY` is deliberately referenced at both build and runtime because Next.js inlines public variables during the build.
+
+Set `LAUNCHPAD_FAST_BUILD=1` only on Launchpad. The dedicated `build:launchpad` command skips Next.js's duplicate TypeScript check and disables startup route preloading for the 1 CPU / 1 GB legacy runner. GitHub CI remains the release gate and still runs `typecheck`, lint, tests, schema validation, and a strict normal `next build` before this deployment path is used.
 
 For initial domain and Launchpad sign-in verification before the malware scanner is available, set both `MALWARE_SCAN_URL=disabled` and `secret://project/malware-scan-token=disabled`. This mode fails closed: upload-intent and completion endpoints return `503`, and the upload page explains that uploads are unavailable. Configure the real HTTPS scanner endpoint and token before enabling uploads or starting the student beta.
 
@@ -96,8 +99,8 @@ Start with the default Launchpad app hostname when possible; it removes the cust
 
 The committed deploy file performs:
 
-1. `npm ci`
-2. `npm run build`
+1. `npm ci --no-audit --no-fund --prefer-offline`
+2. `npm run build:launchpad`
 3. `npm run db:migrate` as the one-per-deployment release command
 4. `npm start`
 5. readiness probing at `/api/health`

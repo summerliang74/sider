@@ -1,9 +1,22 @@
 import type { NextConfig } from "next";
 
+const launchpadFastBuild =
+  process.env.LAUNCHPAD_FAST_BUILD === "1" ||
+  process.env.npm_lifecycle_event === "build:launchpad";
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // GitHub CI runs `npm run typecheck` before deployment. Launchpad's legacy
+  // runner has a 60-second ceiling, so its dedicated build skips that duplicate
+  // check while keeping normal/local production builds strict.
+  typescript: {
+    ignoreBuildErrors: launchpadFastBuild,
+  },
   experimental: {
     authInterrupts: false,
+    // The Launchpad container has 1 GB of memory. Load route modules on demand
+    // instead of preloading the whole application before the health check.
+    preloadEntriesOnStart: launchpadFastBuild ? false : undefined,
   },
   async headers() {
     return [
