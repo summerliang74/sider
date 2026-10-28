@@ -99,7 +99,11 @@ export async function listActiveResources(input: {
     .from(resources)
     .innerJoin(users, eq(resources.authorId, users.id))
     .where(and(...filters))
-    .orderBy(desc(score), desc(published), desc(resources.id))
+    .orderBy(...(
+      q
+        ? [desc(score), desc(published), desc(resources.id)]
+        : [desc(published), desc(resources.id)]
+    ))
     .limit(PAGE_SIZE + 1);
 
   const hasNextPage = rows.length > PAGE_SIZE;
