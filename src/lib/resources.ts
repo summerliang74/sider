@@ -31,6 +31,14 @@ function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, "\\$&");
 }
 
+function normalizeDatabaseDate(value: unknown): Date {
+  const date = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("invalid_resource_timestamp");
+  }
+  return date;
+}
+
 export async function listActiveResources(input: {
   q: string;
   cursor?: string;
@@ -95,7 +103,12 @@ export async function listActiveResources(input: {
     .limit(PAGE_SIZE + 1);
 
   const hasNextPage = rows.length > PAGE_SIZE;
-  const page = rows.slice(0, PAGE_SIZE);
+  // postgres.js returns raw SQL expressions such as COALESCE as strings even
+  // when Drizzle's TypeScript annotation describes them as Date instances.
+  const page = rows.slice(0, PAGE_SIZE).map((item) => ({
+    ...item,
+    publishedAt: normalizeDatabaseDate(item.publishedAt),
+  }));
   const last = page.at(-1);
   const nextCursor =
     hasNextPage && last
