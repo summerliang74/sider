@@ -15,6 +15,13 @@
       "when": 1793030097843,
       "tag": "0001_abnormal_mindworm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793164259614,
+      "tag": "0002_low_gladiator",
+      "breakpoints": true
     }
   ]
 }

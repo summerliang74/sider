@@ -27,6 +27,17 @@ For a self-hosted production server, copy `.env.production.example` to
 starting the application and listens only on `127.0.0.1:3000`; terminate HTTPS
 at Caddy or nginx and proxy to that address.
 
+Create additional non-admin local accounts from the server without putting the
+password in shell history:
+
+```bash
+read -rsp "New user password: " NEW_USER_PASSWORD && echo
+export NEW_USER_PASSWORD
+docker compose --env-file .env.production run --rm -e NEW_USER_PASSWORD app \
+  node scripts/create-local-user.mjs --username student --display-name Student
+unset NEW_USER_PASSWORD
+```
+
 Launchpad must allow the local `APP_BASE_URL` while `SHSID_LAUNCHPAD_OIDC_DEV=1`. Production must use an HTTPS `APP_BASE_URL`, TLS PostgreSQL, and `SHSID_LAUNCHPAD_OIDC_DEV=0`.
 
 The application does not silently substitute local or in-memory services for production dependencies. If storage, rate limiting, challenge verification, or scanning is unavailable, the protected operation fails closed. See [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) before deployment.

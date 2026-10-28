@@ -51,6 +51,20 @@ export const users = pgTable(
   (table) => [uniqueIndex("users_launchpad_sub_unique").on(table.launchpadSub)],
 );
 
+export const localAccounts = pgTable(
+  "local_accounts",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    username: text("username").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("local_accounts_username_unique").on(table.username)],
+);
+
 export const sessions = pgTable(
   "sessions",
   {

@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { verifyLocalCredentials } from "@/src/lib/auth/local";
+import { authenticateLocalUser } from "@/src/lib/auth/local";
 import { issueSession } from "@/src/lib/auth/session";
-import { admitAndUpsertLocalUser } from "@/src/lib/auth/users";
 import { getServerEnv } from "@/src/lib/env";
 import { verifyBotChallenge } from "@/src/lib/security/bot";
 import { enforceIpRateLimit } from "@/src/lib/security/rate-limit";
@@ -34,7 +33,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     const rate = await enforceIpRateLimit("oauth_start", ip);
     await verifyBotChallenge({ required: rate.risky, token: parsed.data.botToken, action: "local_login", ip });
 
-    if (!verifyLocalCredentials(parsed.data.username, parsed.data.password)) {
+    const userId = await authenticateLocalUser(parsed.data.username, parsed.data.password);
+    if (!userId) {
       recordMetric("auth.denied", { reason: "invalid_credentials" });
       return NextResponse.json(
         { error: "invalid_credentials" },
@@ -42,7 +42,6 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    const userId = await admitAndUpsertLocalUser();
     const response = NextResponse.json({ redirectUrl: "/resources" });
     response.headers.set("cache-control", "no-store");
     await issueSession(response, userId);
