@@ -47,7 +47,21 @@ export function UploadForm() {
     setChallengeAction(null);
     setBotToken("");
     setStage("uploading");
-    const upload = await fetch(intent.uploadUrl, { method: "PUT", headers: intent.headers, body: file });
+    let upload: Response;
+    try {
+      upload = await fetch(intent.uploadUrl, { method: "PUT", headers: intent.headers, body: file, signal: AbortSignal.timeout(120_000) });
+    } catch {
+      setStage("error");
+      setMessage("The upload timed out. Please check your connection and try again.");
+      return;
+    }
+    if (upload.status === 401) {
+      setStage("error");
+      setMessage("Your session expired. Please sign in again.");
+      router.push("/login");
+      router.refresh();
+      return;
+    }
     if (!upload.ok) {
       setStage("error");
       setMessage("The storage service rejected the upload. Your file was not published.");

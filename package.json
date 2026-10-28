@@ -16,6 +16,8 @@
     "test:watch": "vitest",
     "verify:production": "node scripts/verify-production.mjs",
     "verify:services": "node --env-file=.env.local scripts/verify-services.mjs",
+    "scanner:start": "node --env-file=.env.local services/malware-scanner/server.mjs",
+    "scanner:test": "node --test services/malware-scanner/server.test.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:check": "drizzle-kit check",
