@@ -8,7 +8,7 @@ Implementation of the MVP in [`SHSID-Online-MVP-PRD.md`](./SHSID-Online-MVP-PRD.
 - Drizzle/PostgreSQL schema and initial migration for users, sessions, OAuth transactions, resources, reports, and audit logs.
 - Server-side Launchpad Authorization Code + PKCE flow with state, nonce, single-use callback transactions, `/oauth/userinfo` identity resolution, org/verification/capability admission, and a one-hour maximum local session.
 - Protected resource search, stable keyset pagination, active-only detail responses, current-user endpoint, and immediate local logout revocation.
-- Private S3-compatible direct upload/download signing, object HEAD verification, fail-closed malware scanning, author metadata/delete controls, and scheduled orphan/deleted-object cleanup.
+- Private S3-compatible server-streamed uploads and signed downloads, object HEAD verification, fail-closed malware scanning, author metadata/delete controls, and scheduled orphan/deleted-object cleanup.
 - Reports, moderation, report dismissal, user suspension with immediate session revocation, and an administrator audit log.
 - Shared Redis-backed IP/user/operation limits, risk-triggered bot verification with action/hostname/freshness/replay checks, strict same-origin mutation checks, structured privacy-safe metrics, and security headers.
 - Responsive login, search, upload, detail, “my uploads,” report, and administration pages based on the approved quiet document-tool visual direction.

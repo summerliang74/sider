@@ -2,14 +2,14 @@ import "server-only";
 
 import { randomBytes, randomUUID } from "node:crypto";
 
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/src/db";
 import { auditLogs, resources } from "@/src/db/schema";
 import type { CurrentUser } from "@/src/lib/auth/session";
 import { normalizeTags, sanitizeFilename, uploadedObjectMatches, validateDeclaredFile, validateDetectedFile } from "@/src/lib/files";
 import { scanObject } from "@/src/lib/scanner";
-import { createUploadUrl, deleteObject, headObject, moveObject } from "@/src/lib/storage";
+import { deleteObject, headObject, moveObject, uploadObject } from "@/src/lib/storage";
 import { recordMetric } from "@/src/lib/telemetry";
 
 export async function createUploadIntent(input: {
@@ -37,24 +37,48 @@ export async function createUploadIntent(input: {
     sizeBytes: input.sizeBytes,
     status: "pending",
   });
-  try {
-    const signed = await createUploadUrl({
-      objectKey,
-      contentType: input.mimeType,
-      contentLength: input.sizeBytes,
-      resourceId: id,
-    });
-    recordMetric("upload.intent_created", { mimeType: input.mimeType, sizeBytes: input.sizeBytes });
-    return {
-      resourceId: id,
-      uploadUrl: signed.url,
-      expiresIn: signed.expiresIn,
-      headers: { "content-type": input.mimeType, "x-amz-meta-resource": id },
-    };
-  } catch (error) {
-    await getDatabase().update(resources).set({ status: "failed", updatedAt: new Date() }).where(eq(resources.id, id));
-    throw error;
-  }
+  recordMetric("upload.intent_created", { mimeType: input.mimeType, sizeBytes: input.sizeBytes });
+  return {
+    resourceId: id,
+    uploadUrl: `/api/resources/${id}/upload`,
+    expiresIn: 300,
+    headers: { "content-type": input.mimeType },
+  };
+}
+
+export async function uploadPendingResource(input: {
+  resourceId: string;
+  user: CurrentUser;
+  contentType: string;
+  contentLength: number;
+  body: ReadableStream<Uint8Array>;
+}): Promise<"uploaded" | "mismatch" | null> {
+  const [resource] = await getDatabase()
+    .select({
+      id: resources.id,
+      objectKey: resources.objectKey,
+      mimeType: resources.mimeType,
+      sizeBytes: resources.sizeBytes,
+    })
+    .from(resources)
+    .where(and(
+      eq(resources.id, input.resourceId),
+      eq(resources.authorId, input.user.id),
+      eq(resources.status, "pending"),
+      gt(resources.createdAt, new Date(Date.now() - 5 * 60 * 1000)),
+    ))
+    .limit(1);
+  if (!resource) return null;
+  if (resource.mimeType !== input.contentType || resource.sizeBytes !== input.contentLength) return "mismatch";
+  await uploadObject({
+    objectKey: resource.objectKey,
+    contentType: resource.mimeType,
+    contentLength: resource.sizeBytes,
+    resourceId: resource.id,
+    body: input.body,
+  });
+  recordMetric("upload.object_stored", { mimeType: resource.mimeType, sizeBytes: resource.sizeBytes });
+  return "uploaded";
 }
 
 export async function completeUpload(resourceId: string, user: CurrentUser) {

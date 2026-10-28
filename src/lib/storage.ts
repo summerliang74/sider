@@ -11,43 +11,56 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { NodeHttpHandler } from "@smithy/node-http-handler";
+import { Readable } from "node:stream";
 
 import { getServerEnv } from "@/src/lib/env";
 
 let cachedClient: S3Client | undefined;
+let cachedUploadClient: S3Client | undefined;
 
-function client(): S3Client {
-  if (cachedClient) return cachedClient;
+function createClient(requestTimeout: number): S3Client {
   const env = getServerEnv();
-  cachedClient = new S3Client({
+  return new S3Client({
     endpoint: env.S3_ENDPOINT,
     region: env.S3_REGION,
     forcePathStyle: env.s3ForcePathStyle,
-    requestHandler: new NodeHttpHandler({ connectionTimeout: 5000, requestTimeout: 15_000 }),
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    requestHandler: new NodeHttpHandler({ connectionTimeout: 5000, requestTimeout }),
     credentials: {
       accessKeyId: env.S3_ACCESS_KEY_ID,
       secretAccessKey: env.S3_SECRET_ACCESS_KEY,
     },
   });
+}
+
+function client(): S3Client {
+  if (cachedClient) return cachedClient;
+  cachedClient = createClient(15_000);
   return cachedClient;
 }
 
-export async function createUploadUrl(input: {
+function uploadClient(): S3Client {
+  if (cachedUploadClient) return cachedUploadClient;
+  cachedUploadClient = createClient(120_000);
+  return cachedUploadClient;
+}
+
+export async function uploadObject(input: {
   objectKey: string;
   contentType: string;
   contentLength: number;
   resourceId: string;
-}): Promise<{ url: string; expiresIn: number }> {
+  body: ReadableStream<Uint8Array>;
+}): Promise<void> {
   const env = getServerEnv();
-  const expiresIn = 300;
-  const command = new PutObjectCommand({
+  await uploadClient().send(new PutObjectCommand({
     Bucket: env.S3_BUCKET,
     Key: input.objectKey,
     ContentType: input.contentType,
     ContentLength: input.contentLength,
     Metadata: { resource: input.resourceId },
-  });
-  return { url: await getSignedUrl(client(), command, { expiresIn }), expiresIn };
+    Body: Readable.fromWeb(input.body as unknown as import("node:stream/web").ReadableStream),
+  }));
 }
 
 export async function headObject(objectKey: string) {
