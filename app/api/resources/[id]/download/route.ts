@@ -29,7 +29,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!z.uuid().safeParse(id).success) return noStoreJson({ error: "resource_unavailable" }, { status: 404 });
     const [resource] = await getDatabase().select({ objectKey: resources.objectKey, filename: resources.originalFilename, mimeType: resources.mimeType }).from(resources).where(and(eq(resources.id, id), eq(resources.status, "active"))).limit(1);
     if (!resource) return noStoreJson({ error: "resource_unavailable" }, { status: 404 });
-    const signed = await createDownloadUrl({ objectKey: resource.objectKey, filename: resource.filename, contentType: resource.mimeType });
+    const signed = await createDownloadUrl({ objectKey: resource.objectKey, filename: resource.filename });
     recordMetric("download.signed", { mimeType: resource.mimeType });
     return noStoreJson(signed);
   } catch (error) {
