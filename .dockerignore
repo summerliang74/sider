@@ -1,0 +1,12 @@
+.git
+.github
+.next
+.tmp
+.env
+.env.*
+!.env.example
+!.env.production.example
+node_modules
+npm-debug.log*
+tsconfig.tsbuildinfo
+frontend-prototype

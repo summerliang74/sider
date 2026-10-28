@@ -3,11 +3,14 @@ import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/src/lib/auth/session";
 import { LaunchpadLogin } from "@/src/components/launchpad-login";
+import { LocalLogin } from "@/src/components/local-login";
+import { getServerEnv } from "@/src/lib/env";
 
 export const metadata = { title: "Sign in" };
 
 export default async function LoginPage() {
   if (await getCurrentUser()) redirect("/resources");
+  const localAuth = getServerEnv().AUTH_MODE === "local";
 
   return (
     <main className="auth-page">
@@ -18,9 +21,9 @@ export default async function LoginPage() {
         <p className="auth-intro">
           Search, share, and preserve useful learning resources with verified members of the SHSID community.
         </p>
-        <LaunchpadLogin />
+        {localAuth ? <LocalLogin /> : <LaunchpadLogin />}
         <p className="privacy-note">
-          Access is limited to verified students. By continuing, you agree to our <Link href="/terms">terms</Link> and acknowledge our <Link href="/privacy">privacy notice</Link>.
+          Access is limited to authorized users. By continuing, you agree to our <Link href="/terms">terms</Link> and acknowledge our <Link href="/privacy">privacy notice</Link>.
         </p>
       </section>
     </main>

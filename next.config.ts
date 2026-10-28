@@ -5,6 +5,7 @@ const launchpadFastBuild =
   process.env.npm_lifecycle_event === "build:launchpad";
 
 const nextConfig: NextConfig = {
+  output: process.env.NEXT_STANDALONE === "1" ? "standalone" : undefined,
   poweredByHeader: false,
   // GitHub CI runs `npm run typecheck` before deployment. Launchpad's legacy
   // runner has a 60-second ceiling, so its dedicated build skips that duplicate
@@ -14,6 +15,9 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     authInterrupts: false,
+    // Launchpad rebuilds in a fresh container, so this cache only costs time
+    // and disk I/O there; strict/local builds keep Next.js's default cache.
+    turbopackFileSystemCacheForBuild: launchpadFastBuild ? false : undefined,
     // The Launchpad container has 1 GB of memory. Load route modules on demand
     // instead of preloading the whole application before the health check.
     preloadEntriesOnStart: launchpadFastBuild ? false : undefined,

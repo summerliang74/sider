@@ -41,7 +41,7 @@ export default async function OrgDiscoveryPage() {
         </dl>
         <div className="notice">
           Set <code>SHSID_ALLOWED_ORGS</code> to the organization value. If this account should be an administrator,
-          set <code>SHSID_ADMIN_SUBS</code> to the subject value. Finally set <code>LAUNCHPAD_ORG_DISCOVERY_EMAIL=disabled</code>.
+          set <code>SHSID_ADMIN_SUBS</code> to the subject value. Finally set <code>SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL=disabled</code>.
         </div>
         <Link className="button login-button" href="/login">Back to sign in</Link>
       </section>

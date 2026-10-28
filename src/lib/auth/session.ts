@@ -66,7 +66,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     .limit(1);
 
   if (!row) return null;
-  const expectedRole = env.adminSubs.includes(row.launchpadSub) ? "admin" : "student";
+  const expectedRole = (
+    (env.AUTH_MODE === "local" && row.launchpadSub === env.localAuthSub) ||
+    env.adminSubs.includes(row.launchpadSub)
+  ) ? "admin" : "student";
   if (row.role !== expectedRole) {
     await getDatabase().update(users).set({ role: expectedRole, updatedAt: new Date() }).where(eq(users.id, row.id));
     if (row.role === "admin" && expectedRole === "student") {

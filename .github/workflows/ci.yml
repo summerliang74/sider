@@ -16,7 +16,7 @@ jobs:
       DATABASE_URL: postgresql://user:pass@db.shsid.test:5432/shsid?sslmode=require
       SHSID_ALLOWED_ORGS: confirmed-org
       SHSID_ADMIN_SUBS: confirmed-admin-sub
-      LAUNCHPAD_OIDC_DEV: "0"
+      SHSID_LAUNCHPAD_OIDC_DEV: "0"
       S3_ENDPOINT: https://s3.shsid.test
       S3_REGION: auto
       S3_BUCKET: shsid-private
@@ -43,4 +43,4 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run db:check
-      - run: npm run build
+      - run: npm run build:strict

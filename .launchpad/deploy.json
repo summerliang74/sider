@@ -14,11 +14,6 @@
   "environment": {
     "build": [
       {
-        "name": "LAUNCHPAD_FAST_BUILD",
-        "source": "variable",
-        "ref": "LAUNCHPAD_FAST_BUILD"
-      },
-      {
         "name": "NEXT_PUBLIC_BOT_SITE_KEY",
         "source": "variable",
         "ref": "NEXT_PUBLIC_BOT_SITE_KEY"
@@ -35,8 +30,8 @@
       { "name": "SHSID_ALLOWED_ORGS", "source": "variable", "ref": "SHSID_ALLOWED_ORGS" },
       { "name": "SHSID_ADMIN_SUBS", "source": "secret", "ref": "secret://project/shsid-admin-subs" },
       { "name": "SHSID_REQUIRED_CAPABILITY", "source": "variable", "ref": "SHSID_REQUIRED_CAPABILITY" },
-      { "name": "LAUNCHPAD_ORG_DISCOVERY_EMAIL", "source": "variable", "ref": "LAUNCHPAD_ORG_DISCOVERY_EMAIL" },
-      { "name": "LAUNCHPAD_OIDC_DEV", "source": "variable", "ref": "LAUNCHPAD_OIDC_DEV" },
+      { "name": "SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL", "source": "variable", "ref": "SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL" },
+      { "name": "SHSID_LAUNCHPAD_OIDC_DEV", "source": "variable", "ref": "SHSID_LAUNCHPAD_OIDC_DEV" },
       { "name": "S3_ENDPOINT", "source": "variable", "ref": "S3_ENDPOINT" },
       { "name": "S3_REGION", "source": "variable", "ref": "S3_REGION" },
       { "name": "S3_BUCKET", "source": "variable", "ref": "S3_BUCKET" },

@@ -21,7 +21,13 @@ Implementation of the MVP in [`SHSID-Online-MVP-PRD.md`](./SHSID-Online-MVP-PRD.
 3. Configure private S3-compatible storage, Redis REST, a Turnstile-compatible challenge verifier, and the scanner contract in [`docs/SCANNER-CONTRACT.md`](./docs/SCANNER-CONTRACT.md).
 4. Run `npm run dev`.
 
-Launchpad must allow the local `APP_BASE_URL` while `LAUNCHPAD_OIDC_DEV=1`. Production must use an HTTPS `APP_BASE_URL`, TLS PostgreSQL, and `LAUNCHPAD_OIDC_DEV=0`.
+For a self-hosted production server, copy `.env.production.example` to
+`.env.production`, set `AUTH_MODE=local`, replace every placeholder, and run
+`docker compose --env-file .env.production up -d --build`. The container applies database migrations before
+starting the application and listens only on `127.0.0.1:3000`; terminate HTTPS
+at Caddy or nginx and proxy to that address.
+
+Launchpad must allow the local `APP_BASE_URL` while `SHSID_LAUNCHPAD_OIDC_DEV=1`. Production must use an HTTPS `APP_BASE_URL`, TLS PostgreSQL, and `SHSID_LAUNCHPAD_OIDC_DEV=0`.
 
 The application does not silently substitute local or in-memory services for production dependencies. If storage, rate limiting, challenge verification, or scanning is unavailable, the protected operation fails closed. See [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) before deployment.
 

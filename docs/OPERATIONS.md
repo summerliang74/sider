@@ -61,6 +61,6 @@ Store all production values in Launchpad Secrets. Only `NEXT_PUBLIC_BOT_SITE_KEY
 
 ## Release gate
 
-Do not open student beta until every M0 item in the MVP PRD has an owner and recorded evidence, production `LAUNCHPAD_OIDC_DEV=0`, the migration and rollback paths have been rehearsed, S3 CORS rejects an unapproved origin, the database restore test succeeds, and an external credential rotation has been demonstrated.
+Do not open student beta until every M0 item in the MVP PRD has an owner and recorded evidence, production `SHSID_LAUNCHPAD_OIDC_DEV=0`, the migration and rollback paths have been rehearsed, S3 CORS rejects an unapproved origin, the database restore test succeeds, and an external credential rotation has been demonstrated.
 
 After deployment, run the non-destructive public verification with `VERIFY_BASE_URL=https://your-domain npm run verify:production`. Add `VERIFY_CRON_SECRET` in the process environment to include authenticated readiness checks; the script never prints the secret. Keep its output with the release evidence.

@@ -12,6 +12,10 @@ const secret = z
 const serverEnvSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    AUTH_MODE: z.enum(["launchpad", "local"]).default("launchpad"),
+    LOCAL_AUTH_USERNAME: z.string().trim().min(3).max(64).default("admin"),
+    LOCAL_AUTH_PASSWORD: secret.optional(),
+    LOCAL_AUTH_DISPLAY_NAME: z.string().trim().min(1).max(120).default("Administrator"),
     APP_BASE_URL: z.url(),
     SESSION_SECRET: secret,
     SESSION_TOKEN_PEPPER: secret,
@@ -21,8 +25,8 @@ const serverEnvSchema = z
     SHSID_ALLOWED_ORGS: z.string().min(1),
     SHSID_ADMIN_SUBS: z.string().min(1),
     SHSID_REQUIRED_CAPABILITY: z.string().optional(),
-    LAUNCHPAD_ORG_DISCOVERY_EMAIL: z.union([z.email(), z.literal("disabled")]).default("disabled"),
-    LAUNCHPAD_OIDC_DEV: z.enum(["0", "1"]),
+    SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL: z.union([z.email(), z.literal("disabled")]).default("disabled"),
+    SHSID_LAUNCHPAD_OIDC_DEV: z.enum(["0", "1"]),
     S3_ENDPOINT: z.url(),
     S3_REGION: z.string().min(1),
     S3_BUCKET: z.string().min(1),
@@ -50,6 +54,13 @@ const serverEnvSchema = z
     const isLocalhost = ["localhost", "127.0.0.1", "[::1]"].includes(appUrl.hostname);
     const scannerUrlDisabled = env.MALWARE_SCAN_URL === "disabled";
     const scannerTokenDisabled = env.MALWARE_SCAN_TOKEN === "disabled";
+    if (env.AUTH_MODE === "local" && !env.LOCAL_AUTH_PASSWORD) {
+      context.addIssue({
+        code: "custom",
+        path: ["LOCAL_AUTH_PASSWORD"],
+        message: "is required when AUTH_MODE=local",
+      });
+    }
     if (scannerUrlDisabled !== scannerTokenDisabled) {
       context.addIssue({
         code: "custom",
@@ -69,10 +80,10 @@ const serverEnvSchema = z
           message: "must use HTTPS in production",
         });
       }
-      if (env.LAUNCHPAD_OIDC_DEV !== "0") {
+      if (env.SHSID_LAUNCHPAD_OIDC_DEV !== "0") {
         context.addIssue({
           code: "custom",
-          path: ["LAUNCHPAD_OIDC_DEV"],
+          path: ["SHSID_LAUNCHPAD_OIDC_DEV"],
           message: "must be 0 in production",
         });
       }
@@ -99,6 +110,9 @@ const serverEnvSchema = z
         ["BOT_VERIFY_SECRET", env.BOT_VERIFY_SECRET],
         ["CRON_SECRET", env.CRON_SECRET],
       ];
+      if (env.AUTH_MODE === "local" && env.LOCAL_AUTH_PASSWORD) {
+        productionValues.push(["LOCAL_AUTH_PASSWORD", env.LOCAL_AUTH_PASSWORD]);
+      }
       if (!scannerUrlDisabled && !scannerTokenDisabled) {
         productionValues.push(["MALWARE_SCAN_URL", env.MALWARE_SCAN_URL]);
         productionValues.push(["MALWARE_SCAN_TOKEN", env.MALWARE_SCAN_TOKEN]);
@@ -133,11 +147,12 @@ const serverEnvSchema = z
       .map((sub) => sub.trim())
       .filter(Boolean),
     requiredCapability: env.SHSID_REQUIRED_CAPABILITY?.trim() || null,
-    orgDiscoveryEmail: env.LAUNCHPAD_ORG_DISCOVERY_EMAIL === "disabled"
+    orgDiscoveryEmail: env.SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL === "disabled"
       ? null
-      : env.LAUNCHPAD_ORG_DISCOVERY_EMAIL.toLowerCase(),
+      : env.SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL.toLowerCase(),
     s3ForcePathStyle: env.S3_FORCE_PATH_STYLE === "true",
     malwareScanEnabled: env.MALWARE_SCAN_URL !== "disabled",
+    localAuthSub: `local:${env.LOCAL_AUTH_USERNAME}`,
   }));
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -152,6 +167,10 @@ export function getServerEnv(): ServerEnv {
   const hasExplicitS3Config = Boolean(process.env.S3_ENDPOINT);
   const resolvedEnv = {
     ...process.env,
+    SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL:
+      process.env.SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL ?? process.env.LAUNCHPAD_ORG_DISCOVERY_EMAIL,
+    SHSID_LAUNCHPAD_OIDC_DEV:
+      process.env.SHSID_LAUNCHPAD_OIDC_DEV ?? process.env.LAUNCHPAD_OIDC_DEV,
     S3_ENDPOINT: hasExplicitS3Config ? process.env.S3_ENDPOINT : process.env.AWS_ENDPOINT_URL_S3,
     S3_REGION: hasExplicitS3Config ? process.env.S3_REGION : process.env.AWS_REGION,
     S3_ACCESS_KEY_ID: hasExplicitS3Config ? process.env.S3_ACCESS_KEY_ID : process.env.AWS_ACCESS_KEY_ID,

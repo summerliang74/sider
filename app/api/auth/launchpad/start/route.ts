@@ -23,6 +23,9 @@ const startBodySchema = z.object({ botToken: z.string().max(4096).optional(), re
 
 async function start(request: Request, asJson: boolean): Promise<NextResponse> {
   const env = getServerEnv();
+  if (env.AUTH_MODE !== "launchpad") {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
   try {
     const ip = getClientIp(request);
     const rate = await enforceIpRateLimit("oauth_start", ip);

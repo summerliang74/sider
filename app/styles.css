@@ -38,6 +38,10 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .auth-card h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(32px, 7vw, 46px); font-weight: 500; line-height: 1.12; letter-spacing: -1.2px; margin: 14px 0 20px; }
 .auth-intro { color: var(--muted); font-size: 15px; max-width: 46ch; }
 .login-button { width: 100%; margin: 22px 0 14px; }
+.local-login { display: grid; gap: 7px; margin-top: 22px; }
+.local-login label { color: var(--muted); font-size: 12px; font-weight: 600; }
+.local-login input { width: 100%; border: 1px solid #cbc8bf; border-radius: 6px; background: #fff; padding: 10px 12px; }
+.local-login .login-button { margin-top: 12px; }
 .privacy-note { color: var(--muted); font-size: 11px; }
 .privacy-note a { text-decoration: underline; }
 .discovery-values { border-block: 1px solid var(--line); margin: 24px 0; }
