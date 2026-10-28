@@ -76,7 +76,6 @@ export async function headObject(objectKey: string) {
 export async function createDownloadUrl(input: {
   objectKey: string;
   filename: string;
-  contentType: string;
 }): Promise<{ url: string; expiresIn: number }> {
   const env = getServerEnv();
   const expiresIn = 120;
@@ -86,7 +85,6 @@ export async function createDownloadUrl(input: {
     Bucket: env.S3_BUCKET,
     Key: input.objectKey,
     ResponseContentDisposition: disposition,
-    ResponseContentType: input.contentType,
   });
   return { url: await getSignedUrl(client(), command, { expiresIn }), expiresIn };
 }
