@@ -12,6 +12,10 @@ const secret = z
 const serverEnvSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    AUTH_MODE: z.enum(["launchpad", "local", "hybrid"]).default("launchpad"),
+    LOCAL_AUTH_USERNAME: z.string().trim().min(3).max(64).default("admin"),
+    LOCAL_AUTH_PASSWORD: secret.optional(),
+    LOCAL_AUTH_DISPLAY_NAME: z.string().trim().min(1).max(120).default("Administrator"),
     APP_BASE_URL: z.url(),
     SESSION_SECRET: secret,
     SESSION_TOKEN_PEPPER: secret,
@@ -50,6 +54,13 @@ const serverEnvSchema = z
     const isLocalhost = ["localhost", "127.0.0.1", "[::1]"].includes(appUrl.hostname);
     const scannerUrlDisabled = env.MALWARE_SCAN_URL === "disabled";
     const scannerTokenDisabled = env.MALWARE_SCAN_TOKEN === "disabled";
+    if (env.AUTH_MODE !== "launchpad" && !env.LOCAL_AUTH_PASSWORD) {
+      context.addIssue({
+        code: "custom",
+        path: ["LOCAL_AUTH_PASSWORD"],
+        message: "is required when local authentication is enabled",
+      });
+    }
     if (scannerUrlDisabled !== scannerTokenDisabled) {
       context.addIssue({
         code: "custom",
@@ -99,6 +110,9 @@ const serverEnvSchema = z
         ["BOT_VERIFY_SECRET", env.BOT_VERIFY_SECRET],
         ["CRON_SECRET", env.CRON_SECRET],
       ];
+      if (env.AUTH_MODE !== "launchpad" && env.LOCAL_AUTH_PASSWORD) {
+        productionValues.push(["LOCAL_AUTH_PASSWORD", env.LOCAL_AUTH_PASSWORD]);
+      }
       if (!scannerUrlDisabled && !scannerTokenDisabled) {
         productionValues.push(["MALWARE_SCAN_URL", env.MALWARE_SCAN_URL]);
         productionValues.push(["MALWARE_SCAN_TOKEN", env.MALWARE_SCAN_TOKEN]);
@@ -138,6 +152,7 @@ const serverEnvSchema = z
       : env.LAUNCHPAD_ORG_DISCOVERY_EMAIL.toLowerCase(),
     s3ForcePathStyle: env.S3_FORCE_PATH_STYLE === "true",
     malwareScanEnabled: env.MALWARE_SCAN_URL !== "disabled",
+    localAuthSub: `local:${env.LOCAL_AUTH_USERNAME.toLowerCase()}`,
   }));
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

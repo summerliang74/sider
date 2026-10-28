@@ -23,6 +23,24 @@ Implementation of the MVP in [`SHSID-Online-MVP-PRD.md`](./SHSID-Online-MVP-PRD.
 
 Launchpad must allow the local `APP_BASE_URL` while `LAUNCHPAD_OIDC_DEV=1`. Production must use an HTTPS `APP_BASE_URL`, TLS PostgreSQL, and `LAUNCHPAD_OIDC_DEV=0`.
 
+## Optional local accounts
+
+`AUTH_MODE` defaults to `launchpad`. Set it to `local` to use only database-backed
+local accounts, or `hybrid` to offer Launchpad and local sign-in together. Local
+and hybrid modes also require `LOCAL_AUTH_USERNAME`, `LOCAL_AUTH_PASSWORD`, and
+`LOCAL_AUTH_DISPLAY_NAME` for the local administrator.
+
+After applying migrations, create ordinary local users without putting their
+passwords in source control:
+
+```bash
+read -rsp "New user password: " NEW_USER_PASSWORD && echo
+export NEW_USER_PASSWORD
+node --env-file=.env.local scripts/create-local-user.mjs \
+  --username student --display-name Student
+unset NEW_USER_PASSWORD
+```
+
 The application does not silently substitute local or in-memory services for production dependencies. If storage, rate limiting, challenge verification, or scanning is unavailable, the protected operation fails closed. See [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) before deployment.
 
 Implementation coverage and the remaining production acceptance evidence are tracked in [`docs/MVP-TRACEABILITY.md`](./docs/MVP-TRACEABILITY.md).
