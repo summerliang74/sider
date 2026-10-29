@@ -7,6 +7,15 @@
   "releaseCommand": ["npm", "run", "db:migrate"],
   "healthPath": "/api/health",
   "nodeVersion": ">=20.9 <25",
+  "ignore": [
+    ".agents",
+    ".codex",
+    ".runtime",
+    ".tmp",
+    "frontend-prototype",
+    "work",
+    "tsconfig.tsbuildinfo"
+  ],
   "rollbackPolicy": {
     "autoRollback": true,
     "observationSeconds": 300

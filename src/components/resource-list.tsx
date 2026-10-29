@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 import type { ResourceListItem } from "@/src/lib/resources";
 
@@ -24,17 +25,17 @@ export function ResourceList({ items }: { items: ResourceListItem[] }) {
     <div className="resource-list">
       {items.map((resource) => (
         <article className="resource-row" key={resource.id}>
+          <Image className="drag-handle" src="/figma/drag-handle.svg" alt="" width={14} height={24} aria-hidden="true" />
           <span className="file-icon" aria-hidden="true">{fileLabel(resource.mimeType, resource.originalFilename)}</span>
           <div className="row-main">
             <Link className="resource-title" href={`/resources/${resource.id}?source=search`}>{resource.title}</Link>
             <p className="resource-description">{resource.description || resource.originalFilename}</p>
-            <div className="row-meta">
-              <span>{resource.authorName}</span><span aria-hidden="true">·</span>
-              <time dateTime={resource.publishedAt.toISOString()}>{resource.publishedAt.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })}</time>
-              {resource.tags.slice(0, 3).map((tag) => <span className="tag" key={tag}>{tag}</span>)}
-            </div>
           </div>
+          <span className="row-author">{resource.authorName}</span>
+          <time className="row-date" dateTime={resource.publishedAt.toISOString()}>{resource.publishedAt.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })}</time>
+          <span className="tag">{resource.tags[0] ?? "Resource"}</span>
           <span className="row-size">{formatBytes(resource.sizeBytes)}</span>
+          <span className="row-more" aria-hidden="true">•••</span>
         </article>
       ))}
     </div>

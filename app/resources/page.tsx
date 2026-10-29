@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/src/components/app-shell";
@@ -21,11 +22,11 @@ export default async function ResourcesPage({
     <AppShell user={user} current="resources">
       <div className="content">
         <section className="hero">
-          <div><p className="eyebrow">Resource Hub</p><h1>Find what your classmates found useful.</h1><p>Search notes, guides, worksheets, and references shared by verified students.</p></div>
-          <div className="shelf-mark" aria-hidden="true">▱<br />▰</div>
+          <div className="hero-copy"><p className="eyebrow">RESOURCE LIBRARY</p><h1>Find what your classmates<br />found useful.</h1><p>A private library of notes, guides, worksheets, and reference files shared by SHSID students, for SHSID students.</p></div>
+          <Image className="shelf-illustration" src="/figma/shelf-illustration.svg" alt="" width={310} height={150} aria-hidden="true" />
         </section>
         <SearchHub initialQuery={query} />
-        <footer className="footer"><span>SHSID Online · student resource hub</span><span><Link href="/privacy">Privacy</Link> · <Link href="/terms">Terms</Link></span></footer>
+        <footer className="footer"><span>Sider · student resource hub</span><span><Link href="/privacy">Privacy</Link> · <Link href="/terms">Terms</Link></span></footer>
       </div>
     </AppShell>
   );
