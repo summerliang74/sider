@@ -101,10 +101,10 @@ export function UploadForm() {
 
   const busy = ["preparing", "uploading", "scanning"].includes(stage);
   return <form className="upload-form" onSubmit={submit}>
-    <label className="field"><span>Title</span><input name="title" required minLength={1} maxLength={120} /></label>
-    <label className="field"><span>Description</span><textarea name="description" maxLength={2000} rows={5} /></label>
+    <label className="field"><span>Title</span><input name="title" required minLength={1} maxLength={120} placeholder="Enter a clear resource title" /><small>Keep it specific and easy to scan.</small></label>
+    <label className="field"><span>Description</span><textarea name="description" maxLength={2000} rows={5} placeholder="Describe what this resource covers" /><small>A short summary helps classmates judge relevance.</small></label>
     <label className="field"><span>Tags</span><input name="tags" maxLength={309} placeholder="calculus, revision, grade 11" /><small>Up to 10 tags, separated by commas.</small></label>
-    <label className="field dropzone"><span>File</span><input name="file" type="file" required accept=".pdf,.docx,.pptx,.xlsx,.txt,.png,.jpg,.jpeg" /><small>One PDF, Office document, text file, PNG, or JPEG. Maximum size is set by the server (50 MB by default).</small></label>
+    <label className="field file-field"><span>FILE</span><span className="dropzone"><strong>Drop a file here, or choose from your device</strong><small>PDF, Office, text, PNG or JPEG · up to 50 MB</small><input name="file" type="file" required accept=".pdf,.docx,.pptx,.xlsx,.txt,.png,.jpg,.jpeg" /></span></label>
     {challengeAction ? <div className="challenge"><p>Please complete this check to continue.</p><BotChallenge action={challengeAction} onToken={(token) => { setBotToken(token); if (challengeAction === "complete" && pendingCompleteId && token) void finishComplete(pendingCompleteId, token); }} /></div> : null}
     {message ? <p className="form-error" role="alert">{message}</p> : null}
     <div className="form-bottom"><small>{stage === "preparing" ? "Preparing secure upload…" : stage === "uploading" ? "Uploading directly to private storage…" : stage === "scanning" ? "Scanning the file before publication…" : stage === "done" ? "Published." : "Files remain private until the scan passes."}</small><button className="button primary" type="submit" disabled={busy || (challengeAction === "upload" && !botToken) || challengeAction === "complete"}>{busy ? "Working…" : "Upload resource"}</button></div>

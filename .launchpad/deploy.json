@@ -7,6 +7,15 @@
   "releaseCommand": ["npm", "run", "db:migrate"],
   "healthPath": "/api/health",
   "nodeVersion": ">=20.9 <25",
+  "ignore": [
+    ".agents",
+    ".codex",
+    ".runtime",
+    ".tmp",
+    "frontend-prototype",
+    "work",
+    "tsconfig.tsbuildinfo"
+  ],
   "rollbackPolicy": {
     "autoRollback": true,
     "observationSeconds": 300
@@ -30,6 +39,7 @@
       { "name": "SHSID_ALLOWED_ORGS", "source": "variable", "ref": "SHSID_ALLOWED_ORGS" },
       { "name": "SHSID_ADMIN_SUBS", "source": "secret", "ref": "secret://project/shsid-admin-subs" },
       { "name": "SHSID_REQUIRED_CAPABILITY", "source": "variable", "ref": "SHSID_REQUIRED_CAPABILITY" },
+      { "name": "SHSID_AUTH_MODE", "source": "variable", "ref": "SHSID_AUTH_MODE" },
       { "name": "SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL", "source": "variable", "ref": "SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL" },
       { "name": "SHSID_LAUNCHPAD_OIDC_DEV", "source": "variable", "ref": "SHSID_LAUNCHPAD_OIDC_DEV" },
       { "name": "S3_ENDPOINT", "source": "variable", "ref": "S3_ENDPOINT" },

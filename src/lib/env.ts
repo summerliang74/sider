@@ -167,6 +167,7 @@ export function getServerEnv(): ServerEnv {
   const hasExplicitS3Config = Boolean(process.env.S3_ENDPOINT);
   const resolvedEnv = {
     ...process.env,
+    AUTH_MODE: process.env.SHSID_AUTH_MODE ?? process.env.AUTH_MODE,
     SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL:
       process.env.SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL ?? process.env.LAUNCHPAD_ORG_DISCOVERY_EMAIL,
     SHSID_LAUNCHPAD_OIDC_DEV:

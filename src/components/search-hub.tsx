@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 import type { ResourceListItem } from "@/src/lib/resources";
 import { BotChallenge } from "./bot-challenge";
@@ -63,13 +64,14 @@ export function SearchHub({ initialQuery }: { initialQuery: string }) {
 
   return <>
     <form className="searchbox" onSubmit={submit} role="search">
-      <span aria-hidden="true">⌕</span>
+      <Image src="/figma/search.svg" alt="" width={20} height={20} aria-hidden="true" />
       <label className="sr-only" htmlFor="resource-search">Search resources</label>
-      <input id="resource-search" name="q" defaultValue={initialQuery} maxLength={120} placeholder="Search titles, descriptions, tags, or file names…" autoComplete="off" />
-      <button type="submit" disabled={loading}>Search</button>
+      <input id="resource-search" name="q" defaultValue={initialQuery} maxLength={120} placeholder="Search notes, guides, worksheets, and references" autoComplete="off" />
+      <button className="sr-only" type="submit" disabled={loading}>Search</button>
     </form>
     <p className="search-caption"><span>{query ? `Results for “${query}”` : "Recently published resources"}</span><span>Only scanned, active files appear here</span></p>
-    <div className="toolbar"><h2>{query ? "Search results" : "Latest resources"}<span>{items.length} shown</span></h2><div className="toolbar-actions"><span className="muted">{query ? "Relevant first" : "Newest first"}</span><Link className="button" href="/resources/new">Upload</Link></div></div>
+    <div className="toolbar"><h2>{query ? "Search results" : "Latest resources"}</h2><div className="toolbar-actions"><span>{query ? "Relevant first" : "Most recent⌄"}</span><span>All subjects⌄</span><span>All file types⌄</span><Link className="button primary" href="/resources/new">Upload resource</Link></div></div>
+    <div className="resource-table-head" aria-hidden="true"><span /><span /><span>Name</span><span>Author</span><span>Date</span><span>Tags</span><span>Size</span><span /></div>
     {pending ? <div className="challenge"><p>{error}</p><BotChallenge action="search" onToken={(token) => { if (token) void load(pending.query, pending.cursor, token); }} /></div> : null}
     {!pending && error ? <p className="form-error" role="alert">{error}</p> : null}
     {loading && items.length === 0 ? <div className="empty"><p>Loading resources…</p></div> : <ResourceList items={items} />}
