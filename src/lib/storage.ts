@@ -98,6 +98,22 @@ export async function createDownloadUrl(input: {
   return { url: await getSignedUrl(client(), command, { expiresIn }), expiresIn };
 }
 
+export async function getObjectPreview(objectKey: string): Promise<{
+  body: ReadableStream<Uint8Array>;
+  contentLength?: number;
+}> {
+  const env = getServerEnv();
+  const result = await client().send(new GetObjectCommand({
+    Bucket: env.S3_BUCKET,
+    Key: objectKey,
+  }));
+  if (!result.Body) throw new Error("preview_body_missing");
+  return {
+    body: result.Body.transformToWebStream() as ReadableStream<Uint8Array>,
+    contentLength: result.ContentLength,
+  };
+}
+
 export async function deleteObject(objectKey: string): Promise<void> {
   const env = getServerEnv();
   await client().send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: objectKey }));

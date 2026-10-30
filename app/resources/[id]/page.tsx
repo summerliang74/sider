@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AppShell } from "@/src/components/app-shell";
+import { DocumentPreview } from "@/src/components/document-preview";
 import { formatBytes } from "@/src/components/resource-list";
 import { ResourceActions } from "@/src/components/resource-actions";
 import { getCurrentUser } from "@/src/lib/auth/session";
+import { getFilePreviewKind } from "@/src/lib/file-preview";
 import { getResourceForViewer } from "@/src/lib/resources";
 import { getDownloadOrigin } from "@/src/lib/storage";
 import { recordMetric } from "@/src/lib/telemetry";
@@ -25,6 +27,7 @@ export default async function ResourceDetailPage({
   recordMetric("resource.viewed", { source: query.source === "search" ? "search" : "direct" });
   const fileType = resource.originalFilename.split(".").pop()?.toUpperCase() || "FILE";
   const subject = resource.tags[0] || "General";
+  const previewKind = getFilePreviewKind(resource.mimeType, resource.sizeBytes);
 
   return (
     <AppShell user={user} current="resources" title="Resource detail">
@@ -42,6 +45,7 @@ export default async function ResourceDetailPage({
               <div><strong>{resource.originalFilename}</strong><small>{resource.mimeType} · {formatBytes(resource.sizeBytes)} · {resource.status === "active" ? "scanned and verified" : resource.status}</small></div>
               <span className={`status ${resource.status}`}>{resource.status === "active" ? "Active" : resource.status}</span>
             </section>
+            {resource.status === "active" && previewKind ? <DocumentPreview resourceId={resource.id} filename={resource.originalFilename} kind={previewKind} /> : null}
             <p className="notice"><span aria-hidden="true">●</span>The file is stored privately. Download links are short-lived and available only to verified students.</p>
             {resource.status !== "active" ? <p className="notice">This resource is visible only to its author or an administrator and cannot be downloaded in its current state.</p> : null}
             <ResourceActions resourceId={resource.id} isOwner={resource.authorId === user.id || user.role === "admin"} canDownload={resource.status === "active"} downloadOrigin={getDownloadOrigin()} initial={{ title: resource.title, description: resource.description, tags: resource.tags }} />
