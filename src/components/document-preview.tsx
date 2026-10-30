@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 
 import type { FilePreviewKind } from "@/src/lib/file-preview";
@@ -20,24 +20,19 @@ export function DocumentPreview({
 }) {
   const documentRef = useRef<HTMLDivElement>(null);
   const objectUrlRef = useRef<string | null>(null);
-  const [status, setStatus] = useState<PreviewStatus>("idle");
-  const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState<PreviewStatus>("loading");
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [text, setText] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState("Loading secure preview…");
   const [challengeRequired, setChallengeRequired] = useState(false);
 
-  useEffect(() => () => {
-    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-  }, []);
-
-  function replaceObjectUrl(next: string | null) {
+  const replaceObjectUrl = useCallback((next: string | null) => {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     objectUrlRef.current = next;
     setObjectUrl(next);
-  }
+  }, []);
 
-  async function loadPreview(botToken?: string) {
+  const loadPreview = useCallback(async (botToken?: string) => {
     setStatus("loading");
     setMessage("Loading secure preview…");
     setChallengeRequired(false);
@@ -85,43 +80,39 @@ export function DocumentPreview({
       setStatus("error");
       setMessage("The document preview could not be loaded. You can still download the original file.");
     }
-  }
+  }, [kind, replaceObjectUrl, resourceId]);
 
-  function showPreview() {
-    setOpen(true);
-    if (status === "idle" || status === "error") {
-      setStatus("loading");
-      requestAnimationFrame(() => void loadPreview());
-    }
-  }
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => void loadPreview());
+    return () => {
+      cancelAnimationFrame(frame);
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, [loadPreview]);
 
   return (
     <section className="document-preview" aria-label="Document preview">
       <div className="preview-toolbar">
         <div>
-          <strong>Preview</strong>
+          <strong>Document preview</strong>
           <span>{filename}</span>
         </div>
-        {open
-          ? <button className="button" type="button" onClick={() => setOpen(false)}>Close preview</button>
-          : <button className="button" type="button" onClick={showPreview}>Preview in browser</button>}
       </div>
-      {open ? (
-        <>
-          {message ? <p className={status === "error" ? "form-error" : "action-message"} role="status">{message}</p> : null}
-          {challengeRequired ? (
-            <div className="challenge">
-              <BotChallenge action="download" onToken={(token) => { if (token) void loadPreview(token); }} />
-            </div>
-          ) : null}
-          <div className={`preview-surface preview-${kind}`} aria-busy={status === "loading"}>
-            {kind === "pdf" && objectUrl ? <iframe src={objectUrl} title={`Preview of ${filename}`} /> : null}
-            {kind === "image" && objectUrl ? <Image src={objectUrl} alt={`Preview of ${filename}`} width={1600} height={1200} unoptimized /> : null}
-            {kind === "text" && status === "ready" ? <pre>{text}</pre> : null}
-            {kind === "docx" ? <div className="docx-preview-body" ref={documentRef} /> : null}
-          </div>
-        </>
+      {message ? <p className={status === "error" ? "form-error" : "action-message"} role="status">{message}</p> : null}
+      {challengeRequired ? (
+        <div className="challenge">
+          <BotChallenge action="download" onToken={(token) => { if (token) void loadPreview(token); }} />
+        </div>
       ) : null}
+      <div className={`preview-surface preview-${kind}`} aria-busy={status === "loading"}>
+        {kind === "pdf" && objectUrl ? <iframe src={objectUrl} title={`Preview of ${filename}`} /> : null}
+        {kind === "image" && objectUrl ? <Image src={objectUrl} alt={`Preview of ${filename}`} width={1600} height={1200} unoptimized /> : null}
+        {kind === "text" && status === "ready" ? <pre>{text}</pre> : null}
+        {kind === "docx" ? <div className="docx-preview-body" ref={documentRef} /> : null}
+      </div>
     </section>
   );
 }
