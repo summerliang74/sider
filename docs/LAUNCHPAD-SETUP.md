@@ -10,6 +10,7 @@ This checklist is derived from the Launchpad Manual pages “Sign in with Launch
 - Identity must come from `/oauth/userinfo`, which returns `sub`, `email`, `name`, `picture`, `org`, `verified`, and `allows`. Rows must be keyed by `sub`, not email.
 - HS256 tokens cannot be verified locally because `/oauth/jwks` is intentionally empty; call `/oauth/userinfo` instead.
 - Default app hostnames receive the same-origin `/dashboard-api` bridge automatically. A custom-domain nginx vhost must proxy `/dashboard-api/` to the host-server on port 5180; re-provision an older binding if the bridge returns 404.
+- Launchpad owns `/__lp_auth/callback` and its SDK keeps PKCE state in `sessionStorage`. Start sign-in with the SDK; after `LaunchpadAuth.ready()` returns a user, send the SDK access token to Sider's same-origin session endpoint so the server can validate it through `/oauth/userinfo` and issue the application session. A separate server-generated PKCE state at the reserved callback path will fail with `state mismatch`.
 - `.launchpad/deploy.json` contains configuration and environment references, never plaintext credentials. Runtime references are available to `releaseCommand` and the running release.
 - Launchpad does not provide managed PostgreSQL, Redis, or object storage. Apps connect to those services using their own network endpoints and credentials.
 

@@ -35,6 +35,32 @@ export const launchpadUserSchema = z.object({
 export type LaunchpadUser = z.infer<typeof launchpadUserSchema>;
 export type LaunchpadBootstrap = z.infer<typeof launchpadBootstrapSchema>;
 
+export class LaunchpadAccessTokenError extends Error {
+  constructor(public readonly reason: "invalid" | "unavailable") {
+    super(`Launchpad access token ${reason}`);
+  }
+}
+
+export async function fetchLaunchpadUser(accessToken: string): Promise<LaunchpadUser> {
+  const env = getServerEnv();
+  const endpoint = new URL("/dashboard-api/oauth/userinfo", env.APP_BASE_URL);
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      headers: { authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    throw new LaunchpadAccessTokenError("unavailable");
+  }
+  if (response.status === 401 || response.status === 403) {
+    throw new LaunchpadAccessTokenError("invalid");
+  }
+  if (!response.ok) throw new LaunchpadAccessTokenError("unavailable");
+  return launchpadUserSchema.parse(await response.json());
+}
+
 export async function bootstrapLaunchpad(): Promise<LaunchpadBootstrap> {
   const env = getServerEnv();
   const endpoint = new URL("/dashboard-api/oauth/bootstrap", env.APP_BASE_URL);
