@@ -20,6 +20,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const parsed = resourceSearchSchema.safeParse({
       q: url.searchParams.get("q") ?? "",
+      fileType: url.searchParams.get("type") ?? undefined,
       cursor: url.searchParams.get("cursor") ?? undefined,
     });
     if (!parsed.success) {

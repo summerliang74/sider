@@ -7,6 +7,7 @@ This matrix tracks the implementation against `SHSID-Online-MVP-PRD.md`. “Impl
 | MVP-AUTH-01–04 | `app/api/auth/launchpad/start`, `app/__lp_auth/callback`, `src/lib/auth/*` | Implemented |
 | MVP-AUTH-05–09 | protected pages/APIs, hashed sessions, secure cookies, logout, suspension revocation | Implemented |
 | MVP-SEARCH-01–06 | `src/components/search-hub.tsx`, `src/lib/resources.ts`, stable cursor tests | Implemented |
+| MVP-SEARCH-07 | PostgreSQL weighted `tsvector`, `pg_trgm` typo matching, safe structured highlights, file-type filter | Implemented; migration and query verified on an isolated Neon branch |
 | MVP-UPLOAD-01–07 | upload intent/complete routes, S3 adapter, HEAD binding, scanner contract, state transitions | Implemented |
 | MVP-UPLOAD-08 | cleanup job plus documented S3 lifecycle/abort rules | Implemented; lifecycle deployment evidence required |
 | MVP-RESOURCE-01–06 | detail route/page, viewer authorization, signed download, metadata update, soft delete | Implemented |

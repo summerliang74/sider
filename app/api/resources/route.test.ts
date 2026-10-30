@@ -63,12 +63,19 @@ describe("GET /api/resources", () => {
       items: [{ id: user.id, title: "Guide", description: "", tags: [], originalFilename: "guide.pdf", mimeType: "application/pdf", sizeBytes: 1024, publishedAt, authorName: "Student" }],
       nextCursor: "next",
     });
-    const response = await GET(new Request("https://app.school.test/api/resources?q=guide"));
+    const response = await GET(new Request("https://app.school.test/api/resources?q=guide&type=pdf"));
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(mocks.ipLimit).toHaveBeenCalledWith("search", "192.0.2.1");
     expect(mocks.userLimit).toHaveBeenCalledWith("search", user.id);
     expect(mocks.bot).toHaveBeenCalledWith(expect.objectContaining({ required: false, action: "search" }));
+    expect(mocks.list).toHaveBeenCalledWith({ q: "guide", fileType: "pdf", cursor: undefined });
     expect(await response.json()).toMatchObject({ items: [{ title: "Guide", publishedAt: publishedAt.toISOString() }], nextCursor: "next" });
+  });
+
+  it("rejects an unsupported file type filter", async () => {
+    const response = await GET(new Request("https://app.school.test/api/resources?type=exe"));
+    expect(response.status).toBe(400);
+    expect(mocks.list).not.toHaveBeenCalled();
   });
 });

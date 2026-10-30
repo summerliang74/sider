@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  customType,
   index,
   jsonb,
   pgEnum,
@@ -11,6 +12,12 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
 
 export const userRole = pgEnum("user_role", ["student", "admin"]);
 export const userStatus = pgEnum("user_status", ["active", "suspended"]);
@@ -111,6 +118,18 @@ export const resources = pgTable(
     mimeType: text("mime_type").notNull(),
     sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
     sha256: text("sha256"),
+    searchText: text("search_text").generatedAlwaysAs(sql`
+      coalesce("title", '') || ' ' ||
+      coalesce("original_filename", '') || ' ' ||
+      coalesce(public.immutable_text_array_to_string("tags"), '') || ' ' ||
+      coalesce("description", '')
+    `),
+    searchVector: tsvector("search_vector").generatedAlwaysAs(sql`
+      setweight(to_tsvector('simple', coalesce("title", '')), 'A') ||
+      setweight(to_tsvector('simple', coalesce("original_filename", '')), 'A') ||
+      setweight(to_tsvector('simple', coalesce(public.immutable_text_array_to_string("tags"), '')), 'B') ||
+      setweight(to_tsvector('simple', coalesce("description", '')), 'C')
+    `),
     status: resourceStatus("status").notNull().default("pending"),
     moderationReason: text("moderation_reason"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -125,6 +144,8 @@ export const resources = pgTable(
       .on(table.publishedAt.desc(), table.id.desc())
       .where(sql`${table.status} = 'active'`),
     index("resources_author_created_idx").on(table.authorId, table.createdAt.desc()),
+    index("resources_search_vector_idx").using("gin", table.searchVector),
+    index("resources_search_text_trgm_idx").using("gin", table.searchText.asc().op("gin_trgm_ops")),
   ],
 );
 

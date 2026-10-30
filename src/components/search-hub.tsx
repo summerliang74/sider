@@ -5,25 +5,43 @@ import Link from "next/link";
 import Image from "next/image";
 
 import type { ResourceListItem } from "@/src/lib/resources";
+import {
+  resourceFileTypeLabels,
+  resourceFileTypes,
+  type ResourceFileType,
+} from "@/src/lib/resource-search";
 import { BotChallenge } from "./bot-challenge";
 import { ResourceList } from "./resource-list";
 
 type ApiItem = Omit<ResourceListItem, "publishedAt"> & { publishedAt: string };
-type PendingSearch = { query: string; cursor?: string };
+type PendingSearch = { query: string; fileType?: ResourceFileType; cursor?: string };
 
-export function SearchHub({ initialQuery }: { initialQuery: string }) {
+export function SearchHub({
+  initialQuery,
+  initialFileType,
+}: {
+  initialQuery: string;
+  initialFileType?: ResourceFileType;
+}) {
   const [query, setQuery] = useState(initialQuery);
+  const [fileType, setFileType] = useState<ResourceFileType | undefined>(initialFileType);
   const [items, setItems] = useState<ResourceListItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pending, setPending] = useState<PendingSearch | null>(null);
 
-  const load = useCallback(async (targetQuery: string, cursor?: string, botToken?: string) => {
+  const load = useCallback(async (
+    targetQuery: string,
+    targetFileType?: ResourceFileType,
+    cursor?: string,
+    botToken?: string,
+  ) => {
     setLoading(true);
     setError("");
     const params = new URLSearchParams();
     if (targetQuery) params.set("q", targetQuery);
+    if (targetFileType) params.set("type", targetFileType);
     if (cursor) params.set("cursor", cursor);
     const response = await fetch(`/api/resources?${params.toString()}`, {
       headers: botToken ? { "x-bot-token": botToken } : undefined,
@@ -31,7 +49,7 @@ export function SearchHub({ initialQuery }: { initialQuery: string }) {
     });
     const result = await response.json() as { items?: ApiItem[]; nextCursor?: string | null; error?: string };
     if (result.error === "bot_challenge_required") {
-      setPending({ query: targetQuery, cursor });
+      setPending({ query: targetQuery, fileType: targetFileType, cursor });
       setError("Please complete the traffic check to continue searching.");
       setLoading(false);
       return;
@@ -49,17 +67,31 @@ export function SearchHub({ initialQuery }: { initialQuery: string }) {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void load(initialQuery), 0);
+    const timer = window.setTimeout(() => void load(initialQuery, initialFileType), 0);
     return () => window.clearTimeout(timer);
-  }, [initialQuery, load]);
+  }, [initialFileType, initialQuery, load]);
+
+  function replaceSearchUrl(targetQuery: string, targetFileType?: ResourceFileType) {
+    const params = new URLSearchParams();
+    if (targetQuery) params.set("q", targetQuery);
+    if (targetFileType) params.set("type", targetFileType);
+    const search = params.toString();
+    window.history.replaceState(null, "", search ? `/resources?${search}` : "/resources");
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const nextQuery = String(form.get("q") ?? "").trim().slice(0, 120);
     setQuery(nextQuery);
-    window.history.replaceState(null, "", nextQuery ? `/resources?q=${encodeURIComponent(nextQuery)}` : "/resources");
-    void load(nextQuery);
+    replaceSearchUrl(nextQuery, fileType);
+    void load(nextQuery, fileType);
+  }
+
+  function changeFileType(nextFileType: ResourceFileType | undefined) {
+    setFileType(nextFileType);
+    replaceSearchUrl(query, nextFileType);
+    void load(query, nextFileType);
   }
 
   return <>
@@ -70,11 +102,11 @@ export function SearchHub({ initialQuery }: { initialQuery: string }) {
       <button className="sr-only" type="submit" disabled={loading}>Search</button>
     </form>
     <p className="search-caption"><span>{query ? `Results for “${query}”` : "Recently published resources"}</span><span>Only scanned, active files appear here</span></p>
-    <div className="toolbar"><h2>{query ? "Search results" : "Latest resources"}</h2><div className="toolbar-actions"><span>{query ? "Relevant first" : "Most recent⌄"}</span><span>All subjects⌄</span><span>All file types⌄</span><Link className="button primary" href="/resources/new">Upload resource</Link></div></div>
+    <div className="toolbar"><h2>{query ? "Search results" : "Latest resources"}</h2><div className="toolbar-actions"><span>{query ? "Relevant first" : "Most recent"}</span><label className="file-type-filter"><span className="sr-only">Filter by file type</span><select value={fileType ?? ""} onChange={(event) => changeFileType(event.target.value ? event.target.value as ResourceFileType : undefined)}><option value="">All file types</option>{resourceFileTypes.map((type) => <option key={type} value={type}>{resourceFileTypeLabels[type]}</option>)}</select></label><Link className="button primary" href="/resources/new">Upload resource</Link></div></div>
     <div className="resource-table-head" aria-hidden="true"><span /><span /><span>Name</span><span>Author</span><span>Date</span><span>Tags</span><span>Size</span><span /></div>
-    {pending ? <div className="challenge"><p>{error}</p><BotChallenge action="search" onToken={(token) => { if (token) void load(pending.query, pending.cursor, token); }} /></div> : null}
+    {pending ? <div className="challenge"><p>{error}</p><BotChallenge action="search" onToken={(token) => { if (token) void load(pending.query, pending.fileType, pending.cursor, token); }} /></div> : null}
     {!pending && error ? <p className="form-error" role="alert">{error}</p> : null}
     {loading && items.length === 0 ? <div className="empty"><p>Loading resources…</p></div> : <ResourceList items={items} />}
-    {nextCursor ? <div className="pagination"><button className="button" type="button" disabled={loading} onClick={() => void load(query, nextCursor)}>{loading ? "Loading…" : "Load more"}</button></div> : null}
+    {nextCursor ? <div className="pagination"><button className="button" type="button" disabled={loading} onClick={() => void load(query, fileType, nextCursor)}>{loading ? "Loading…" : "Load more"}</button></div> : null}
   </>;
 }
