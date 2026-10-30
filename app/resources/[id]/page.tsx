@@ -6,6 +6,7 @@ import { formatBytes } from "@/src/components/resource-list";
 import { ResourceActions } from "@/src/components/resource-actions";
 import { getCurrentUser } from "@/src/lib/auth/session";
 import { getResourceForViewer } from "@/src/lib/resources";
+import { getDownloadOrigin } from "@/src/lib/storage";
 import { recordMetric } from "@/src/lib/telemetry";
 
 export default async function ResourceDetailPage({
@@ -43,7 +44,7 @@ export default async function ResourceDetailPage({
             </section>
             <p className="notice"><span aria-hidden="true">●</span>The file is stored privately. Download links are short-lived and available only to verified students.</p>
             {resource.status !== "active" ? <p className="notice">This resource is visible only to its author or an administrator and cannot be downloaded in its current state.</p> : null}
-            <ResourceActions resourceId={resource.id} isOwner={resource.authorId === user.id || user.role === "admin"} canDownload={resource.status === "active"} initial={{ title: resource.title, description: resource.description, tags: resource.tags }} />
+            <ResourceActions resourceId={resource.id} isOwner={resource.authorId === user.id || user.role === "admin"} canDownload={resource.status === "active"} downloadOrigin={getDownloadOrigin()} initial={{ title: resource.title, description: resource.description, tags: resource.tags }} />
           </article>
           <aside className="resource-context">
             <p className="eyebrow">RESOURCE CONTEXT</p>

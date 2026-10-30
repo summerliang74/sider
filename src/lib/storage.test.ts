@@ -19,7 +19,7 @@ vi.mock("@/src/lib/env", () => ({
   }),
 }));
 
-import { createDownloadUrl } from "./storage";
+import { createDownloadUrl, getDownloadOrigin } from "./storage";
 
 describe("download URLs", () => {
   beforeEach(() => {
@@ -41,5 +41,9 @@ describe("download URLs", () => {
     });
     expect(command.input).not.toHaveProperty("ResponseContentType");
     expect(result).toEqual({ url: "https://example.test/signed-download", expiresIn: 120 });
+  });
+
+  it("exposes the virtual-hosted download origin for browser preconnects", () => {
+    expect(getDownloadOrigin()).toBe("https://sider-prod-upload.oss-cn-beijing.aliyuncs.com");
   });
 });

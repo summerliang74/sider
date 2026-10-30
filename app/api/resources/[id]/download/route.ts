@@ -18,16 +18,22 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!requireSameOrigin(request)) return noStoreJson({ error: "forbidden" }, { status: 403 });
   const ip = getClientIp(request);
   try {
-    const ipLimit = await enforceIpRateLimit("download", ip);
-    const user = await getCurrentUser();
+    const [ipLimit, user, parsed, params] = await Promise.all([
+      enforceIpRateLimit("download", ip),
+      getCurrentUser(),
+      request.json().catch(() => ({})).then((body) => bodySchema.safeParse(body)),
+      context.params,
+    ]);
     if (!user) return noStoreJson({ error: "unauthorized" }, { status: 401 });
-    const userLimit = await enforceUserRateLimit("download", user.id);
-    const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) return noStoreJson({ error: "invalid_request" }, { status: 400 });
-    await verifyBotChallenge({ required: ipLimit.risky || userLimit.risky, token: parsed.data.botToken, action: "download", ip });
-    const { id } = await context.params;
+    const { id } = params;
     if (!z.uuid().safeParse(id).success) return noStoreJson({ error: "resource_unavailable" }, { status: 404 });
-    const [resource] = await getDatabase().select({ objectKey: resources.objectKey, filename: resources.originalFilename, mimeType: resources.mimeType }).from(resources).where(and(eq(resources.id, id), eq(resources.status, "active"))).limit(1);
+    const [userLimit, resourceRows] = await Promise.all([
+      enforceUserRateLimit("download", user.id),
+      getDatabase().select({ objectKey: resources.objectKey, filename: resources.originalFilename, mimeType: resources.mimeType }).from(resources).where(and(eq(resources.id, id), eq(resources.status, "active"))).limit(1),
+    ]);
+    await verifyBotChallenge({ required: ipLimit.risky || userLimit.risky, token: parsed.data.botToken, action: "download", ip });
+    const [resource] = resourceRows;
     if (!resource) return noStoreJson({ error: "resource_unavailable" }, { status: 404 });
     const signed = await createDownloadUrl({ objectKey: resource.objectKey, filename: resource.filename });
     recordMetric("download.signed", { mimeType: resource.mimeType });

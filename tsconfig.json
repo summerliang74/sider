@@ -38,6 +38,7 @@
   ],
   "exclude": [
     "node_modules",
-    "frontend-prototype"
+    "frontend-prototype",
+    "work"
   ]
 }

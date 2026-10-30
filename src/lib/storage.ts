@@ -45,6 +45,15 @@ function uploadClient(): S3Client {
   return cachedUploadClient;
 }
 
+export function getDownloadOrigin(): string {
+  const env = getServerEnv();
+  const endpoint = new URL(env.S3_ENDPOINT);
+  if (!env.s3ForcePathStyle && !endpoint.hostname.startsWith(`${env.S3_BUCKET}.`)) {
+    endpoint.hostname = `${env.S3_BUCKET}.${endpoint.hostname}`;
+  }
+  return endpoint.origin;
+}
+
 export async function uploadObject(input: {
   objectKey: string;
   contentType: string;

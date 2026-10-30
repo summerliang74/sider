@@ -2,10 +2,12 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { preconnect } from "react-dom";
 
 import { BotChallenge } from "./bot-challenge";
 
-export function ResourceActions({ resourceId, isOwner, canDownload, initial }: { resourceId: string; isOwner: boolean; canDownload: boolean; initial: { title: string; description: string; tags: string[] } }) {
+export function ResourceActions({ resourceId, isOwner, canDownload, downloadOrigin, initial }: { resourceId: string; isOwner: boolean; canDownload: boolean; downloadOrigin: string; initial: { title: string; description: string; tags: string[] } }) {
+  preconnect(downloadOrigin);
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [editing, setEditing] = useState(false);
