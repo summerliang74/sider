@@ -91,6 +91,28 @@ export const sessions = pgTable(
   ],
 );
 
+export const registrationInvites = pgTable(
+  "registration_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tokenHash: text("token_hash").notNull(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    consumedBy: uuid("consumed_by").references(() => users.id, { onDelete: "restrict" }),
+    note: text("note"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("registration_invites_token_hash_unique").on(table.tokenHash),
+    index("registration_invites_status_expiry_idx").on(table.revokedAt, table.consumedAt, table.expiresAt),
+    index("registration_invites_created_at_idx").on(table.createdAt.desc(), table.id.desc()),
+  ],
+);
+
 export const oauthLoginTransactions = pgTable(
   "oauth_login_transactions",
   {

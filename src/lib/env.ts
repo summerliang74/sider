@@ -16,6 +16,11 @@ const serverEnvSchema = z
     LOCAL_AUTH_USERNAME: z.string().trim().min(3).max(64).default("admin"),
     LOCAL_AUTH_PASSWORD: secret.optional(),
     LOCAL_AUTH_DISPLAY_NAME: z.string().trim().min(1).max(120).default("Administrator"),
+    REGISTRATION_MODE: z.enum(["closed", "invite"]).default("closed"),
+    REGISTRATION_INVITE_PEPPER: secret.optional(),
+    REGISTRATION_INVITE_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(72),
+    REGISTRATION_IP_LIMIT: z.coerce.number().int().positive().default(30),
+    REGISTRATION_IDENTITY_LIMIT: z.coerce.number().int().positive().default(10),
     APP_BASE_URL: z.url(),
     SESSION_SECRET: secret,
     SESSION_TOKEN_PEPPER: secret,
@@ -59,6 +64,13 @@ const serverEnvSchema = z
         code: "custom",
         path: ["LOCAL_AUTH_PASSWORD"],
         message: "is required when AUTH_MODE=local",
+      });
+    }
+    if (env.REGISTRATION_MODE === "invite" && !env.REGISTRATION_INVITE_PEPPER) {
+      context.addIssue({
+        code: "custom",
+        path: ["REGISTRATION_INVITE_PEPPER"],
+        message: "is required when REGISTRATION_MODE=invite",
       });
     }
     if (scannerUrlDisabled !== scannerTokenDisabled) {
@@ -112,6 +124,9 @@ const serverEnvSchema = z
       ];
       if (env.AUTH_MODE === "local" && env.LOCAL_AUTH_PASSWORD) {
         productionValues.push(["LOCAL_AUTH_PASSWORD", env.LOCAL_AUTH_PASSWORD]);
+      }
+      if (env.REGISTRATION_INVITE_PEPPER) {
+        productionValues.push(["REGISTRATION_INVITE_PEPPER", env.REGISTRATION_INVITE_PEPPER]);
       }
       if (!scannerUrlDisabled && !scannerTokenDisabled) {
         productionValues.push(["MALWARE_SCAN_URL", env.MALWARE_SCAN_URL]);

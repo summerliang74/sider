@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import type { CurrentUser } from "@/src/lib/auth/session";
+import { getServerEnv } from "@/src/lib/env";
 
 export function AppShell({
   user,
@@ -20,6 +21,7 @@ export function AppShell({
     .join("")
     .slice(0, 2)
     .toUpperCase();
+  const localAuth = getServerEnv().AUTH_MODE === "local";
 
   return (
     <div className="shell">
@@ -32,7 +34,7 @@ export function AppShell({
         <nav className="nav" aria-label="Primary navigation">
           <Link className={current === "resources" ? "selected" : undefined} href="/resources"><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>Resources</span></Link>
           <Link className={current === "mine" ? "selected" : undefined} href="/me/resources"><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>My uploads</span></Link>
-          {user.role === "admin" ? <><Link className={current === "admin" ? "selected" : undefined} href="/admin/reports">⚑ <span>Reports</span></Link><Link href="/admin/audit">☷ <span>Audit log</span></Link></> : null}
+          {user.role === "admin" ? <><Link className={current === "admin" ? "selected" : undefined} href="/admin/reports">⚑ <span>Reports</span></Link>{localAuth ? <Link href="/admin/invites">＋ <span>Invitations</span></Link> : null}<Link href="/admin/audit">☷ <span>Audit log</span></Link></> : null}
         </nav>
         <div className="sidebar-note">
           <strong>Private workspace</strong>

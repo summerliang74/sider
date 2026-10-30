@@ -10,6 +10,7 @@ Implementation of the MVP in [`SHSID-Online-MVP-PRD.md`](./SHSID-Online-MVP-PRD.
 - Protected resource search, stable keyset pagination, active-only detail responses, current-user endpoint, and immediate local logout revocation.
 - Private S3-compatible server-streamed uploads and signed downloads, object HEAD verification, fail-closed malware scanning, author metadata/delete controls, and scheduled orphan/deleted-object cleanup.
 - Reports, moderation, report dismissal, user suspension with immediate session revocation, and an administrator audit log.
+- Invite-only local account registration with single-use hashed invitations, automatic sign-in, and administrator invitation management.
 - Shared Redis-backed IP/user/operation limits, risk-triggered bot verification with action/hostname/freshness/replay checks, strict same-origin mutation checks, structured privacy-safe metrics, and security headers.
 - Responsive login, search, upload, detail, “my uploads,” report, and administration pages based on the approved quiet document-tool visual direction.
 - Startup-time environment validation plus deployment, storage, scanner, lifecycle, recovery, monitoring, and rotation runbooks.
@@ -37,6 +38,11 @@ docker compose --env-file .env.production run --rm -e NEW_USER_PASSWORD app \
   node scripts/create-local-user.mjs --username student --display-name Student
 unset NEW_USER_PASSWORD
 ```
+
+For student self-registration, configure `REGISTRATION_INVITE_PEPPER`, run the
+latest migration, then set `REGISTRATION_MODE=invite`. Administrators manage
+single-use codes at `/admin/invites`. Registration remains closed by default;
+see [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) for activation and rotation.
 
 Launchpad must allow the local `APP_BASE_URL` while `SHSID_LAUNCHPAD_OIDC_DEV=1`. Production must use an HTTPS `APP_BASE_URL`, TLS PostgreSQL, and `SHSID_LAUNCHPAD_OIDC_DEV=0`.
 

@@ -64,3 +64,19 @@ Store all production values in Launchpad Secrets. Only `NEXT_PUBLIC_BOT_SITE_KEY
 Do not open student beta until every M0 item in the MVP PRD has an owner and recorded evidence, production `SHSID_LAUNCHPAD_OIDC_DEV=0`, the migration and rollback paths have been rehearsed, S3 CORS rejects an unapproved origin, the database restore test succeeds, and an external credential rotation has been demonstrated.
 
 After deployment, run the non-destructive public verification with `VERIFY_BASE_URL=https://your-domain npm run verify:production`. Add `VERIFY_CRON_SECRET` in the process environment to include authenticated readiness checks; the script never prints the secret. Keep its output with the release evidence.
+
+## Invitation registration
+
+Invitation registration is disabled by default. Configure a distinct secret of
+at least 32 characters in `REGISTRATION_INVITE_PEPPER`, run the checked-in
+database migration with `DATABASE_URL_UNPOOLED`, and set
+`REGISTRATION_MODE=invite` only when registrations should be accepted. Restart
+the application after changing the mode.
+
+Administrators create and revoke single-use codes at `/admin/invites`. A code is
+shown only in the create response; the database and audit log store no plaintext
+or masked copy. Rotating `REGISTRATION_INVITE_PEPPER` invalidates all unused
+codes, so revoke or reissue outstanding invitations as part of a rotation.
+
+To stop registration immediately, restore `REGISTRATION_MODE=closed` and restart
+the application. Existing accounts and sessions continue to work.
