@@ -39,7 +39,7 @@ export async function bootstrapLaunchpad(): Promise<LaunchpadBootstrap> {
   const env = getServerEnv();
   const endpoint = new URL("/dashboard-api/oauth/bootstrap", env.APP_BASE_URL);
   const body =
-    env.NODE_ENV !== "production" && env.LAUNCHPAD_OIDC_DEV === "1"
+    env.NODE_ENV !== "production" && env.launchpadOidcDev === "1"
       ? JSON.stringify({ devOrigin: env.APP_BASE_URL })
       : undefined;
   const response = await fetch(endpoint, {

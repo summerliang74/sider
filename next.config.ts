@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const launchpadFastBuild =
-  process.env.LAUNCHPAD_FAST_BUILD === "1" ||
+  process.env.SIDER_FAST_BUILD === "1" ||
   process.env.npm_lifecycle_event === "build:launchpad";
 
 const nextConfig: NextConfig = {

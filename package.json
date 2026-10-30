@@ -7,9 +7,9 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "build:launchpad": "next build",
-    "start": "next start",
+    "build": "node scripts/build-next.mjs",
+    "build:launchpad": "node scripts/build-next.mjs --fast",
+    "start": "node scripts/start-next.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
