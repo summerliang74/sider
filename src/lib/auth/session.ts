@@ -10,6 +10,7 @@ import { hashOpaqueToken, randomToken } from "@/src/lib/crypto";
 import { getServerEnv } from "@/src/lib/env";
 
 import { sessionCookieName } from "./constants";
+import { resolveIdentityRole } from "./role-policy";
 
 export type CurrentUser = {
   id: string;
@@ -83,10 +84,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     .limit(1);
 
   if (!row) return null;
-  const expectedRole = (
-    (env.AUTH_MODE === "local" && row.launchpadSub === env.localAuthSub) ||
-    env.adminSubs.includes(row.launchpadSub)
-  ) ? "admin" : "student";
+  const expectedRole = resolveIdentityRole({
+    authMode: env.AUTH_MODE,
+    launchpadSub: row.launchpadSub,
+    localAuthSub: env.localAuthSub,
+    adminSubs: env.adminSubs,
+  });
   if (row.role !== expectedRole) {
     await getDatabase().update(users).set({ role: expectedRole, updatedAt: new Date() }).where(eq(users.id, row.id));
     if (row.role === "admin" && expectedRole === "student") {

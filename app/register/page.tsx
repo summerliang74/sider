@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { RegisterForm } from "@/src/components/register-form";
 import { getCurrentUser } from "@/src/lib/auth/session";
@@ -11,7 +11,8 @@ export const metadata = { title: "Create account" };
 export default async function RegisterPage() {
   if (await getCurrentUser()) redirect("/resources");
   const env = getServerEnv();
-  const registrationOpen = env.AUTH_MODE === "local" && env.REGISTRATION_MODE === "invite";
+  if (env.AUTH_MODE !== "local") notFound();
+  const registrationOpen = env.REGISTRATION_MODE === "invite";
 
   return (
     <main className="auth-page register-page">

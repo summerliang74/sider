@@ -26,15 +26,15 @@ export function AppShell({
   return (
     <div className="shell">
       <aside className="sidebar">
-        <Link href="/resources" className="brand">
+        <Link href="/resources" className="brand" prefetch={false}>
           <Image src="/figma/sider-mark.svg" alt="" width={28} height={28} aria-hidden="true" />
           <span>Sider</span>
         </Link>
         <p className="workspace-label">STUDENT RESOURCE HUB</p>
         <nav className="nav" aria-label="Primary navigation">
-          <Link className={current === "resources" ? "selected" : undefined} href="/resources"><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>Resources</span></Link>
-          <Link className={current === "mine" ? "selected" : undefined} href="/me/resources"><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>My uploads</span></Link>
-          {user.role === "admin" ? <><Link className={current === "admin" ? "selected" : undefined} href="/admin/reports">⚑ <span>Reports</span></Link>{localAuth ? <Link href="/admin/invites">＋ <span>Invitations</span></Link> : null}<Link href="/admin/audit">☷ <span>Audit log</span></Link></> : null}
+          <Link className={current === "resources" ? "selected" : undefined} href="/resources" prefetch={false}><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>Resources</span></Link>
+          <Link className={current === "mine" ? "selected" : undefined} href="/me/resources" prefetch={false}><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>My uploads</span></Link>
+          {user.role === "admin" ? <><Link className={current === "admin" ? "selected" : undefined} href="/admin/reports" prefetch={false}>⚑ <span>Reports</span></Link>{localAuth ? <Link href="/admin/invites" prefetch={false}>＋ <span>Invitations</span></Link> : null}<Link href="/admin/audit" prefetch={false}>☷ <span>Audit log</span></Link></> : null}
         </nav>
         <div className="sidebar-note">
           <strong>Private workspace</strong>
@@ -48,10 +48,10 @@ export function AppShell({
       </aside>
       <main className="main">
         <header className="topbar">
-          <Link className="mobile-brand" href="/resources"><Image src="/figma/sider-mark.svg" alt="" width={28} height={28} aria-hidden="true" /> Sider</Link>
+          <Link className="mobile-brand" href="/resources" prefetch={false}><Image src="/figma/sider-mark.svg" alt="" width={28} height={28} aria-hidden="true" /> Sider</Link>
           <div className="breadcrumbs"><span>Workspace</span><span aria-hidden="true">/</span><span>{title ?? (current === "resources" ? "Resources" : current === "mine" ? "My uploads" : "Reports")}</span></div>
           <div className="top-meta"><Image src="/figma/verified-dot.svg" alt="" width={8} height={8} aria-hidden="true" /> Private &amp; verified</div>
-          <nav className="mobile-links" aria-label="Mobile navigation"><Link href="/resources">Resources</Link><Link href="/me/resources">My uploads</Link>{user.role === "admin" ? <Link href="/admin/reports">Admin</Link> : null}<form action="/api/auth/logout" method="post"><button type="submit">Sign out</button></form></nav>
+          <nav className="mobile-links" aria-label="Mobile navigation"><Link href="/resources" prefetch={false}>Resources</Link><Link href="/me/resources" prefetch={false}>My uploads</Link>{user.role === "admin" ? <Link href="/admin/reports" prefetch={false}>Admin</Link> : null}<form action="/api/auth/logout" method="post"><button type="submit">Sign out</button></form></nav>
         </header>
         {children}
       </main>

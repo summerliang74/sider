@@ -158,13 +158,24 @@ export async function revokeRegistrationInvite(id: string, actorId: string): Pro
 }
 
 function isUsernameConflict(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const candidate = error as { code?: string; constraint_name?: string; constraint?: string };
-  const constraint = candidate.constraint_name ?? candidate.constraint ?? "";
-  return candidate.code === "23505" && (
-    constraint === "users_launchpad_sub_unique" ||
-    constraint === "local_accounts_username_unique"
-  );
+  let current = error;
+  const seen = new Set<object>();
+  while (current && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+    const candidate = current as {
+      code?: string;
+      constraint_name?: string;
+      constraint?: string;
+      cause?: unknown;
+    };
+    const constraint = candidate.constraint_name ?? candidate.constraint ?? "";
+    if (candidate.code === "23505" && (
+      constraint === "users_launchpad_sub_unique" ||
+      constraint === "local_accounts_username_unique"
+    )) return true;
+    current = candidate.cause;
+  }
+  return false;
 }
 
 export async function registerInvitedUser(input: {

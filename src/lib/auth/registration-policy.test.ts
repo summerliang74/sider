@@ -41,4 +41,14 @@ describe("registration input policy", () => {
   it("rejects client-controlled extra fields", () => {
     expect(registrationRequestSchema.safeParse({ ...valid, role: "admin" }).success).toBe(false);
   });
+
+  it("accepts a missing bot token for the initial low-risk request", () => {
+    expect(registrationRequestSchema.safeParse({
+      username: valid.username,
+      displayName: valid.displayName,
+      password: valid.password,
+      inviteCode: valid.inviteCode,
+      acceptTerms: valid.acceptTerms,
+    }).success).toBe(true);
+  });
 });

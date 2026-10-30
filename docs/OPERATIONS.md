@@ -80,3 +80,9 @@ codes, so revoke or reissue outstanding invitations as part of a rotation.
 
 To stop registration immediately, restore `REGISTRATION_MODE=closed` and restart
 the application. Existing accounts and sessions continue to work.
+
+Registration challenges are risk-triggered by default. Set
+`REGISTRATION_FORCE_CHALLENGE=true` and restart only when an active abuse event
+requires every registration attempt to complete the configured bot challenge.
+Restore it to `false` after the incident so normal low-risk registrations do not
+depend on the challenge provider.

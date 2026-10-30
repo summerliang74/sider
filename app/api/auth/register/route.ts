@@ -14,7 +14,7 @@ import {
   registerInvitedUser,
   UsernameTakenError,
 } from "@/src/lib/registration-invites";
-import { verifyBotChallenge } from "@/src/lib/security/bot";
+import { BotChallengeError, verifyBotChallenge } from "@/src/lib/security/bot";
 import {
   enforceIpRateLimit,
   enforceRegistrationIdentityRateLimit,
@@ -23,7 +23,7 @@ import { getClientIp, requireSameOrigin } from "@/src/lib/security/request";
 import { securityErrorResponse } from "@/src/lib/security/responses";
 import { recordMetric } from "@/src/lib/telemetry";
 
-function denied(reason: "invalid_request" | "closed" | "invalid_invite" | "username_taken") {
+function denied(reason: "invalid_request" | "closed" | "invalid_invite" | "username_taken" | "bot_failed") {
   recordMetric("registration.denied", { reason });
 }
 
@@ -51,12 +51,23 @@ export async function POST(request: Request): Promise<NextResponse> {
   const { username, displayName, password, inviteCode, botToken } = validation.value;
   try {
     const ip = getClientIp(request);
-    await enforceIpRateLimit("register", ip);
-    await Promise.all([
+    const ipLimit = await enforceIpRateLimit("register", ip);
+    const [usernameLimit, inviteLimit] = await Promise.all([
       enforceRegistrationIdentityRateLimit("username", username),
       enforceRegistrationIdentityRateLimit("invite", inviteCode),
     ]);
-    await verifyBotChallenge({ required: true, token: botToken, action: "register", ip });
+    const challengeRequired = env.REGISTRATION_FORCE_CHALLENGE || ipLimit.risky || usernameLimit.risky || inviteLimit.risky;
+    if (challengeRequired) {
+      recordMetric("registration.challenge_required");
+      if (!botToken) {
+        return noStoreJson(
+          { error: "bot_challenge_required", challengeRequired: true },
+          { status: 403 },
+        );
+      }
+      await verifyBotChallenge({ required: true, token: botToken, action: "register", ip });
+      recordMetric("registration.challenge_passed");
+    }
 
     const passwordHash = await hashPassword(password);
     const result = await registerInvitedUser({
@@ -74,6 +85,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     recordMetric("registration_invite.consumed");
     return response;
   } catch (error) {
+    if (error instanceof BotChallengeError) {
+      if (error.reason === "unavailable") {
+        recordMetric("registration.platform_error");
+        return noStoreJson({ error: "service_unavailable" }, { status: 503 });
+      }
+      denied("bot_failed");
+      return noStoreJson({ error: "bot_challenge_invalid", challengeRequired: true }, { status: 403 });
+    }
     if (error instanceof InvalidInviteError) {
       denied("invalid_invite");
       return noStoreJson({ error: "invalid_invite" }, { status: 403 });

@@ -54,8 +54,21 @@ describe("registration environment", () => {
     expect(getServerEnv().REGISTRATION_MODE).toBe("invite");
   });
 
+  it("rejects reuse of a session secret as the invitation pepper", () => {
+    process.env.REGISTRATION_MODE = "invite";
+    process.env.REGISTRATION_INVITE_PEPPER = baseEnv.SESSION_TOKEN_PEPPER;
+    expect(() => getServerEnv()).toThrow(/distinct from session secrets/);
+  });
+
   it("rejects unknown registration modes", () => {
     process.env.REGISTRATION_MODE = "public";
     expect(() => getServerEnv()).toThrow(/REGISTRATION_MODE/);
+  });
+
+  it("defaults emergency challenge mode off and accepts an explicit switch", () => {
+    expect(getServerEnv().REGISTRATION_FORCE_CHALLENGE).toBe(false);
+    resetEnvForTests();
+    process.env.REGISTRATION_FORCE_CHALLENGE = "true";
+    expect(getServerEnv().REGISTRATION_FORCE_CHALLENGE).toBe(true);
   });
 });

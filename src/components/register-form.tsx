@@ -14,13 +14,15 @@ const errorMessages: Record<string, string> = {
   rate_limited: "Too many registration attempts. Please wait and try again.",
   bot_challenge_required: "Complete the traffic check to continue.",
   bot_challenge_invalid: "The traffic check expired. Complete it again.",
-  bot_challenge_unavailable: "The traffic check is temporarily unavailable.",
   registration_closed: "Registration is currently closed.",
+  service_unavailable: "Registration is temporarily unavailable.",
 };
 
 export function RegisterForm() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [needsChallenge, setNeedsChallenge] = useState(false);
+  const [challengeFailed, setChallengeFailed] = useState(false);
   const [botToken, setBotToken] = useState("");
   const [challengeKey, setChallengeKey] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
@@ -39,11 +41,6 @@ export function RegisterForm() {
       setMessage(errorMessages.weak_password ?? "Use a password between 16 and 128 characters.");
       return;
     }
-    if (!botToken) {
-      setMessage("Complete the traffic check to continue.");
-      return;
-    }
-
     setBusy(true);
     setMessage("");
     try {
@@ -55,22 +52,41 @@ export function RegisterForm() {
           displayName: form.get("displayName"),
           password,
           inviteCode: form.get("inviteCode"),
-          botToken,
+          botToken: botToken || undefined,
           acceptTerms: form.get("acceptTerms") === "on",
         }),
       });
       const result = await response.json() as { redirectUrl?: string; error?: string };
-      if (!response.ok || !result.redirectUrl) {
-        setMessage(errorMessages[result.error ?? ""] ?? "Registration is temporarily unavailable.");
+      if (result.error === "bot_challenge_required") {
+        setNeedsChallenge(true);
+        setChallengeFailed(false);
+        setBotToken("");
+        setMessage(errorMessages.bot_challenge_required ?? "Complete the traffic check to continue.");
+        return;
+      }
+      if (result.error === "bot_challenge_invalid") {
+        setNeedsChallenge(true);
+        setChallengeFailed(false);
         setBotToken("");
         setChallengeKey((value) => value + 1);
+        setMessage(errorMessages.bot_challenge_invalid ?? "Complete the traffic check again.");
+        return;
+      }
+      if (!response.ok || !result.redirectUrl) {
+        setMessage(errorMessages[result.error ?? ""] ?? "Registration is temporarily unavailable.");
+        if (needsChallenge) {
+          setBotToken("");
+          setChallengeKey((value) => value + 1);
+        }
         return;
       }
       window.location.assign(result.redirectUrl);
     } catch {
       setMessage("Registration is temporarily unavailable.");
-      setBotToken("");
-      setChallengeKey((value) => value + 1);
+      if (needsChallenge) {
+        setBotToken("");
+        setChallengeKey((value) => value + 1);
+      }
     } finally {
       setBusy(false);
     }
@@ -112,12 +128,39 @@ export function RegisterForm() {
         <input name="acceptTerms" type="checkbox" required />
         <span>I accept the <Link href="/terms" target="_blank">student resource policy</Link> and <Link href="/privacy" target="_blank">privacy notice</Link>.</span>
       </label>
-      <div className="challenge register-challenge">
-        <p>Complete the traffic check before creating your account.</p>
-        <BotChallenge key={challengeKey} action="register" onToken={setBotToken} />
-      </div>
+      {needsChallenge ? (
+        <div className="challenge register-challenge">
+          <p>This registration needs an additional traffic check.</p>
+          <BotChallenge
+            key={challengeKey}
+            action="register"
+            onToken={(token) => {
+              setBotToken(token);
+              if (token) setChallengeFailed(false);
+            }}
+            onError={() => {
+              setBotToken("");
+              setChallengeFailed(true);
+              setMessage("The traffic check could not load. Check your connection or script blocker, then retry.");
+            }}
+          />
+          {challengeFailed ? (
+            <button
+              className="button"
+              type="button"
+              onClick={() => {
+                setChallengeFailed(false);
+                setMessage("Complete the traffic check to continue.");
+                setChallengeKey((value) => value + 1);
+              }}
+            >
+              Retry traffic check
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {message ? <p className="form-error" role="alert">{message}</p> : null}
-      <button className="button primary register-button" type="submit" disabled={busy || !botToken}>
+      <button className="button primary register-button" type="submit" disabled={busy || (needsChallenge && !botToken)}>
         {busy ? "Creating account…" : <>Create account <span aria-hidden="true">→</span></>}
       </button>
     </form>

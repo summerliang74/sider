@@ -85,11 +85,11 @@ function privacyKey(kind: "ip" | "user", identity: string, operation: RateOperat
 export async function enforceRegistrationIdentityRateLimit(
   kind: "username" | "invite",
   identity: string,
-): Promise<void> {
+): Promise<{ risky: boolean }> {
   const env = getServerEnv();
   if (!env.REGISTRATION_INVITE_PEPPER) throw new Error("registration_invite_pepper_missing");
   const digest = hashOpaqueToken(`registration-${kind}:${identity}`, env.REGISTRATION_INVITE_PEPPER);
-  await consume(`shsid:rl:register:${kind}:${digest}`, env.REGISTRATION_IDENTITY_LIMIT, 3600);
+  return consume(`shsid:rl:register:${kind}:${digest}`, env.REGISTRATION_IDENTITY_LIMIT, 3600);
 }
 
 export async function enforceIpRateLimit(operation: RateOperation, ip: string): Promise<{ risky: boolean }> {

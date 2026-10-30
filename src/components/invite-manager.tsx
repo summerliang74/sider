@@ -25,6 +25,31 @@ export function InviteManager({ initial, defaultTtlHours }: { initial: InvitePag
     if (response.ok) setPage(await response.json() as InvitePage);
   }
 
+  async function loadMore() {
+    if (!page.nextCursor || busy) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch(
+        `/api/admin/registration-invites?cursor=${encodeURIComponent(page.nextCursor)}`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) {
+        setMessage("Older invitations could not be loaded.");
+        return;
+      }
+      const next = await response.json() as InvitePage;
+      setPage((current) => ({
+        items: [...current.items, ...next.items],
+        nextCursor: next.nextCursor,
+      }));
+    } catch {
+      setMessage("Older invitations could not be loaded.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function createInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
@@ -128,6 +153,7 @@ export function InviteManager({ initial, defaultTtlHours }: { initial: InvitePag
             ))}
           </div>
         )}
+        {page.nextCursor ? <button className="button" type="button" disabled={busy} onClick={loadMore}>{busy ? "Loading…" : "Load older invitations"}</button> : null}
       </section>
     </div>
   );

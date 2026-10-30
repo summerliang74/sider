@@ -13,21 +13,28 @@ import {
 import { BotChallenge } from "./bot-challenge";
 import { ResourceList } from "./resource-list";
 
-type ApiItem = Omit<ResourceListItem, "publishedAt"> & { publishedAt: string };
+export type SerializedResourceListItem = Omit<ResourceListItem, "publishedAt"> & { publishedAt: string };
 type PendingSearch = { query: string; fileType?: ResourceFileType; cursor?: string };
 
 export function SearchHub({
   initialQuery,
   initialFileType,
+  initialItems,
+  initialNextCursor,
 }: {
   initialQuery: string;
   initialFileType?: ResourceFileType;
+  initialItems?: SerializedResourceListItem[];
+  initialNextCursor?: string | null;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [fileType, setFileType] = useState<ResourceFileType | undefined>(initialFileType);
-  const [items, setItems] = useState<ResourceListItem[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<ResourceListItem[]>(() => (initialItems ?? []).map((item) => ({
+    ...item,
+    publishedAt: new Date(item.publishedAt),
+  })));
+  const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor ?? null);
+  const [loading, setLoading] = useState(initialItems === undefined);
   const [error, setError] = useState("");
   const [pending, setPending] = useState<PendingSearch | null>(null);
 
@@ -47,7 +54,7 @@ export function SearchHub({
       headers: botToken ? { "x-bot-token": botToken } : undefined,
       cache: "no-store",
     });
-    const result = await response.json() as { items?: ApiItem[]; nextCursor?: string | null; error?: string };
+    const result = await response.json() as { items?: SerializedResourceListItem[]; nextCursor?: string | null; error?: string };
     if (result.error === "bot_challenge_required") {
       setPending({ query: targetQuery, fileType: targetFileType, cursor });
       setError("Please complete the traffic check to continue searching.");
@@ -67,9 +74,10 @@ export function SearchHub({
   }, []);
 
   useEffect(() => {
+    if (initialItems !== undefined) return;
     const timer = window.setTimeout(() => void load(initialQuery, initialFileType), 0);
     return () => window.clearTimeout(timer);
-  }, [initialFileType, initialQuery, load]);
+  }, [initialFileType, initialItems, initialQuery, load]);
 
   function replaceSearchUrl(targetQuery: string, targetFileType?: ResourceFileType) {
     const params = new URLSearchParams();
@@ -102,7 +110,7 @@ export function SearchHub({
       <button className="sr-only" type="submit" disabled={loading}>Search</button>
     </form>
     <p className="search-caption"><span>{query ? `Results for “${query}”` : "Recently published resources"}</span><span>Only scanned, active files appear here</span></p>
-    <div className="toolbar"><h2>{query ? "Search results" : "Latest resources"}</h2><div className="toolbar-actions"><span>{query ? "Relevant first" : "Most recent"}</span><label className="file-type-filter"><span className="sr-only">Filter by file type</span><select value={fileType ?? ""} onChange={(event) => changeFileType(event.target.value ? event.target.value as ResourceFileType : undefined)}><option value="">All file types</option>{resourceFileTypes.map((type) => <option key={type} value={type}>{resourceFileTypeLabels[type]}</option>)}</select></label><Link className="button primary" href="/resources/new">Upload resource</Link></div></div>
+    <div className="toolbar"><h2>{query ? "Search results" : "Latest resources"}</h2><div className="toolbar-actions"><span>{query ? "Relevant first" : "Most recent"}</span><label className="file-type-filter"><span className="sr-only">Filter by file type</span><select value={fileType ?? ""} onChange={(event) => changeFileType(event.target.value ? event.target.value as ResourceFileType : undefined)}><option value="">All file types</option>{resourceFileTypes.map((type) => <option key={type} value={type}>{resourceFileTypeLabels[type]}</option>)}</select></label><Link className="button primary" href="/resources/new" prefetch={false}>Upload resource</Link></div></div>
     <div className="resource-table-head" aria-hidden="true"><span /><span /><span>Name</span><span>Author</span><span>Date</span><span>Tags</span><span>Size</span><span /></div>
     {pending ? <div className="challenge"><p>{error}</p><BotChallenge action="search" onToken={(token) => { if (token) void load(pending.query, pending.fileType, pending.cursor, token); }} /></div> : null}
     {!pending && error ? <p className="form-error" role="alert">{error}</p> : null}

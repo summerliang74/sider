@@ -16,7 +16,7 @@ export const registrationRequestSchema = z.object({
   displayName: z.string().max(240),
   password: z.string().max(256),
   inviteCode: z.string().max(256),
-  botToken: z.string().max(4096),
+  botToken: z.string().max(4096).optional(),
   acceptTerms: z.boolean(),
 }).strict();
 

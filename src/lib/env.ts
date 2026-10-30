@@ -21,6 +21,7 @@ const serverEnvSchema = z
     REGISTRATION_INVITE_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(72),
     REGISTRATION_IP_LIMIT: z.coerce.number().int().positive().default(30),
     REGISTRATION_IDENTITY_LIMIT: z.coerce.number().int().positive().default(10),
+    REGISTRATION_FORCE_CHALLENGE: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
     APP_BASE_URL: z.url(),
     SESSION_SECRET: secret,
     SESSION_TOKEN_PEPPER: secret,
@@ -71,6 +72,16 @@ const serverEnvSchema = z
         code: "custom",
         path: ["REGISTRATION_INVITE_PEPPER"],
         message: "is required when REGISTRATION_MODE=invite",
+      });
+    }
+    if (
+      env.REGISTRATION_INVITE_PEPPER &&
+      [env.SESSION_SECRET, env.SESSION_TOKEN_PEPPER].includes(env.REGISTRATION_INVITE_PEPPER)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["REGISTRATION_INVITE_PEPPER"],
+        message: "must be distinct from session secrets",
       });
     }
     if (scannerUrlDisabled !== scannerTokenDisabled) {
