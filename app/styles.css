@@ -87,6 +87,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .toolbar { height: 48px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .toolbar h2 { margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; }
 .toolbar-actions { display: flex; align-items: center; gap: 20px; color: var(--muted); font-size: 11px; line-height: 16px; }
+.file-type-filter select { height: 34px; max-width: 160px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--canvas); color: var(--muted); padding: 6px 28px 6px 10px; font-size: 11px; line-height: 16px; }
 .resource-table-head, .resource-row { display: grid; grid-template-columns: 14px 38px minmax(220px, 390px) 116px 96px minmax(54px, 1fr) 64px 28px; gap: 12px; align-items: center; padding-inline: 8px; }
 .resource-table-head { height: 34px; color: var(--muted); font-size: 11px; line-height: 16px; }
 .resource-table-head span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -101,6 +102,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .row-main { min-width: 0; height: 52px; display: flex; flex-direction: column; gap: 2px; justify-content: center; }
 .resource-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; line-height: 22px; }
 .resource-description { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; line-height: 16px; margin: 0; }
+.resource-title mark, .resource-description mark { border-radius: 2px; background: #ffe58a; color: inherit; padding: 0 1px; }
 .row-author, .row-date, .row-size { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; line-height: 16px; }
 .tag { width: fit-content; max-width: 100%; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: var(--radius-xs); background: var(--blue-soft); color: var(--action); padding: 4px 8px; font-size: 11px; line-height: 16px; }
 .resource-row:nth-child(even) .tag, .tag.tone-1 { background: var(--green-soft); color: var(--green); }

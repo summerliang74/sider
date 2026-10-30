@@ -22,6 +22,13 @@
       "when": 1793169577202,
       "tag": "0002_lonely_power_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793318457078,
+      "tag": "0003_search07",
+      "breakpoints": true
     }
   ]
 }
