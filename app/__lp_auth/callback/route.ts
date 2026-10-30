@@ -28,7 +28,7 @@ const transactionSchema = z.object({
 
 export async function GET(request: Request): Promise<NextResponse> {
   const env = getServerEnv();
-  if (env.AUTH_MODE === "local") {
+  if (env.AUTH_MODE !== "launchpad") {
     return NextResponse.redirect(new URL("/login", env.APP_BASE_URL));
   }
   try {

@@ -10,6 +10,7 @@ import { hashOpaqueToken, randomToken } from "@/src/lib/crypto";
 import { getServerEnv } from "@/src/lib/env";
 
 import { sessionCookieName } from "./constants";
+import { resolveIdentityRole } from "./role-policy";
 
 export type CurrentUser = {
   id: string;
@@ -20,20 +21,37 @@ export type CurrentUser = {
   role: "student" | "admin";
 };
 
-export async function issueSession(response: NextResponse, userId: string): Promise<void> {
+export type PreparedSession = {
+  token: string;
+  tokenHash: string;
+  expiresAt: Date;
+};
+
+export function prepareSession(): PreparedSession {
   const env = getServerEnv();
   const token = randomToken();
-  const tokenHash = hashOpaqueToken(token, env.SESSION_TOKEN_PEPPER);
-  const expiresAt = new Date(Date.now() + env.SESSION_TTL_SECONDS * 1000);
+  return {
+    token,
+    tokenHash: hashOpaqueToken(token, env.SESSION_TOKEN_PEPPER),
+    expiresAt: new Date(Date.now() + env.SESSION_TTL_SECONDS * 1000),
+  };
+}
 
-  await getDatabase().insert(sessions).values({ userId, tokenHash, expiresAt });
-  response.cookies.set(sessionCookieName(env.NODE_ENV === "production"), token, {
+export function setSessionCookie(response: NextResponse, session: PreparedSession): void {
+  const env = getServerEnv();
+  response.cookies.set(sessionCookieName(env.NODE_ENV === "production"), session.token, {
     httpOnly: true,
     secure: env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    expires: expiresAt,
+    expires: session.expiresAt,
   });
+}
+
+export async function issueSession(response: NextResponse, userId: string): Promise<void> {
+  const session = prepareSession();
+  await getDatabase().insert(sessions).values({ userId, tokenHash: session.tokenHash, expiresAt: session.expiresAt });
+  setSessionCookie(response, session);
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
@@ -66,10 +84,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     .limit(1);
 
   if (!row) return null;
-  const expectedRole = (
-    (env.AUTH_MODE !== "launchpad" && row.launchpadSub === env.localAuthSub) ||
-    env.adminSubs.includes(row.launchpadSub)
-  ) ? "admin" : "student";
+  const expectedRole = resolveIdentityRole({
+    authMode: env.AUTH_MODE,
+    launchpadSub: row.launchpadSub,
+    localAuthSub: env.localAuthSub,
+    adminSubs: env.adminSubs,
+  });
   if (row.role !== expectedRole) {
     await getDatabase().update(users).set({ role: expectedRole, updatedAt: new Date() }).where(eq(users.id, row.id));
     if (row.role === "admin" && expectedRole === "student") {

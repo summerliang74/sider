@@ -47,7 +47,7 @@ export async function admitAndUpsertUser(profile: LaunchpadUser): Promise<string
 
 export async function admitAndUpsertLocalUser(): Promise<string> {
   const env = getServerEnv();
-  if (env.AUTH_MODE === "launchpad") throw new Error("Local authentication is disabled");
+  if (env.AUTH_MODE !== "local") throw new Error("Local authentication is disabled");
 
   const [user] = await getDatabase()
     .insert(users)

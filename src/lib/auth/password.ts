@@ -1,5 +1,4 @@
 import { randomBytes, scrypt as nodeScrypt, timingSafeEqual } from "node:crypto";
-
 const COST = 16_384;
 const BLOCK_SIZE = 8;
 const PARALLELIZATION = 1;
@@ -24,11 +23,14 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function verifyPassword(password: string, encoded: string): Promise<boolean> {
   const [algorithm, costValue, blockSizeValue, parallelizationValue, saltValue, hashValue] = encoded.split("$");
+  const cost = Number(costValue);
+  const blockSize = Number(blockSizeValue);
+  const parallelization = Number(parallelizationValue);
   if (
     algorithm !== "scrypt" ||
-    Number(costValue) !== COST ||
-    Number(blockSizeValue) !== BLOCK_SIZE ||
-    Number(parallelizationValue) !== PARALLELIZATION ||
+    cost !== COST ||
+    blockSize !== BLOCK_SIZE ||
+    parallelization !== PARALLELIZATION ||
     !saltValue ||
     !hashValue
   ) return false;

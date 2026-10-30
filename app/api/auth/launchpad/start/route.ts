@@ -23,7 +23,7 @@ const startBodySchema = z.object({ botToken: z.string().max(4096).optional(), re
 
 async function start(request: Request, asJson: boolean): Promise<NextResponse> {
   const env = getServerEnv();
-  if (env.AUTH_MODE === "local") {
+  if (env.AUTH_MODE !== "launchpad") {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
   try {

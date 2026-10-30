@@ -11,7 +11,8 @@ export const metadata = { title: "Sign in" };
 
 export default async function LoginPage() {
   if (await getCurrentUser()) redirect("/resources");
-  const authMode = getServerEnv().AUTH_MODE;
+  const localAuth = getServerEnv().AUTH_MODE === "local";
+  const registrationOpen = localAuth && getServerEnv().REGISTRATION_MODE === "invite";
 
   return (
     <main className="auth-page">
@@ -35,8 +36,8 @@ export default async function LoginPage() {
           <p className="eyebrow">WELCOME TO SIDER</p>
           <h2 id="login-title">A shared shelf for student knowledge.</h2>
           <p className="auth-intro">Sign in with your school workspace to browse and share verified resources.</p>
-          {authMode !== "local" ? <LaunchpadLogin /> : null}
-          {authMode !== "launchpad" ? <LocalLogin /> : null}
+          {localAuth ? <LocalLogin /> : <LaunchpadLogin />}
+          {registrationOpen ? <p className="auth-switch">Invited to Sider? <Link href="/register">Create account</Link></p> : null}
           <p className="privacy-note">By continuing, you agree to the student resource <Link href="/terms">policy</Link> and <Link href="/privacy">privacy notice</Link>.</p>
         </div>
       </section>

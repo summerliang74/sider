@@ -46,7 +46,7 @@ RESOURCE_DELETE_RETENTION_DAYS
 
 Production values must include `SHSID_LAUNCHPAD_OIDC_DEV=0`, an HTTPS `APP_BASE_URL`, and TLS endpoints. `NEXT_PUBLIC_BOT_SITE_KEY` is deliberately referenced at both build and runtime because Next.js inlines public variables during the build.
 
-Do not create a `LAUNCHPAD_FAST_BUILD` deploy variable: names beginning with `LAUNCHPAD_` are reserved by the platform. The dedicated `build:launchpad` lifecycle automatically skips Next.js's duplicate TypeScript check and disables startup route preloading for the constrained runner. Both build scripts force Next.js to use its supported `production` mode even when a legacy host injects a non-standard `NODE_ENV`. GitHub CI remains the release gate and still runs `typecheck`, lint, tests, schema validation, and a strict normal `next build` before this deployment path is used.
+The `build` and `build:launchpad` scripts normalize `NODE_ENV=production`, disable telemetry, skip Next.js's duplicate TypeScript check, disable the throwaway Turbopack filesystem cache, and disable startup route preloading for the constrained runner. GitHub CI remains the release gate and runs `typecheck`, lint, tests, schema validation, and `build:strict`. Do not declare `LAUNCHPAD_FAST_BUILD` in the deploy environment: that name is reserved by Launchpad.
 
 For initial domain and Launchpad sign-in verification before the malware scanner is available, set both `MALWARE_SCAN_URL=disabled` and `secret://project/malware-scan-token=disabled`. This mode fails closed: upload-intent and completion endpoints return `503`, and the upload page explains that uploads are unavailable. Configure the real HTTPS scanner endpoint and token before enabling uploads or starting the student beta.
 

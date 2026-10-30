@@ -18,7 +18,7 @@ function protectedEqual(left: string, right: string, pepper: string): boolean {
 
 export async function authenticateLocalUser(username: string, password: string): Promise<string | null> {
   const env = getServerEnv();
-  if (env.AUTH_MODE === "launchpad" || !env.LOCAL_AUTH_PASSWORD) return null;
+  if (env.AUTH_MODE !== "local" || !env.LOCAL_AUTH_PASSWORD) return null;
 
   const normalizedUsername = username.trim().toLowerCase();
   const adminMatches = protectedEqual(normalizedUsername, env.LOCAL_AUTH_USERNAME.toLowerCase(), env.SESSION_SECRET) &&

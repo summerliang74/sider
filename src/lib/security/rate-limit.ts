@@ -7,12 +7,15 @@ import { hashOpaqueToken } from "@/src/lib/crypto";
 import { getServerEnv } from "@/src/lib/env";
 import { recordMetric } from "@/src/lib/telemetry";
 
-export type RateOperation = "page" | "oauth_start" | "oauth_callback" | "search" | "upload" | "upload_transfer" | "complete" | "download" | "resource_write" | "report" | "admin";
+export type RateOperation = "page" | "oauth_start" | "oauth_callback" | "register" | "invite_create" | "invite_revoke" | "search" | "upload" | "upload_transfer" | "complete" | "download" | "resource_write" | "report" | "admin";
 
 const limits: Record<RateOperation, { user?: number; ip: number; windowSeconds: number }> = {
   page: { ip: 600, windowSeconds: 60 },
   oauth_start: { ip: 300, windowSeconds: 600 },
   oauth_callback: { ip: 600, windowSeconds: 600 },
+  register: { ip: 30, windowSeconds: 3600 },
+  invite_create: { user: 30, ip: 300, windowSeconds: 86400 },
+  invite_revoke: { user: 60, ip: 300, windowSeconds: 3600 },
   search: { user: 60, ip: 120, windowSeconds: 60 },
   upload: { user: 10, ip: 30, windowSeconds: 3600 },
   upload_transfer: { user: 12, ip: 40, windowSeconds: 3600 },
@@ -30,6 +33,8 @@ function policyFor(operation: RateOperation): { user?: number; ip: number; windo
     ? env.OAUTH_START_IP_LIMIT
     : operation === "oauth_callback"
       ? env.OAUTH_CALLBACK_IP_LIMIT
+      : operation === "register"
+        ? env.REGISTRATION_IP_LIMIT
       : base.ip;
   return {
     ip: Math.max(1, Math.floor(ipBase * env.RATE_LIMIT_MULTIPLIER)),
@@ -75,6 +80,16 @@ async function consume(key: string, limit: number, windowSeconds: number): Promi
 function privacyKey(kind: "ip" | "user", identity: string, operation: RateOperation): string {
   const env = getServerEnv();
   return `shsid:rl:${operation}:${kind}:${hashOpaqueToken(identity, env.SESSION_TOKEN_PEPPER)}`;
+}
+
+export async function enforceRegistrationIdentityRateLimit(
+  kind: "username" | "invite",
+  identity: string,
+): Promise<{ risky: boolean }> {
+  const env = getServerEnv();
+  if (!env.REGISTRATION_INVITE_PEPPER) throw new Error("registration_invite_pepper_missing");
+  const digest = hashOpaqueToken(`registration-${kind}:${identity}`, env.REGISTRATION_INVITE_PEPPER);
+  return consume(`shsid:rl:register:${kind}:${digest}`, env.REGISTRATION_IDENTITY_LIMIT, 3600);
 }
 
 export async function enforceIpRateLimit(operation: RateOperation, ip: string): Promise<{ risky: boolean }> {

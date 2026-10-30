@@ -18,7 +18,7 @@ const bodySchema = z.object({
 
 export async function POST(request: Request): Promise<NextResponse> {
   const env = getServerEnv();
-  if (env.AUTH_MODE === "launchpad") {
+  if (env.AUTH_MODE !== "local") {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
   if (!requireSameOrigin(request)) {
