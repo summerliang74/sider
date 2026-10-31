@@ -18,6 +18,13 @@ describe("Launchpad admission", () => {
     expect(() => assertLaunchpadAdmission(eligible, { allowedOrgs: ["shsid"], requiredCapability: "resources" })).not.toThrow();
   });
 
+  it("accepts an explicitly configured administrator outside the organization allow-list", () => {
+    expect(() => assertLaunchpadAdmission(
+      { ...eligible, org: "personal:launchpad-user" },
+      { allowedOrgs: ["shsid"], adminSubs: ["launchpad-user"], requiredCapability: "resources" },
+    )).not.toThrow();
+  });
+
   it.each([
     [{ ...eligible, verified: false }, "not_verified"],
     [{ ...eligible, org: "other" }, "org_not_allowed"],

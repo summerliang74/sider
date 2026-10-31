@@ -22,15 +22,38 @@ const tokenSchema = z.object({
   expires_in: z.number().optional(),
 });
 
+const nullableEmailSchema = z.preprocess(
+  (value) => value === "" ? null : value,
+  z.email().max(320).nullish(),
+);
+const nullableNameSchema = z.preprocess(
+  (value) => value === "" ? null : value,
+  z.string().trim().min(1).max(200).nullish(),
+);
+const nullablePictureSchema = z.preprocess(
+  (value) => value === "" ? null : value,
+  z.url().max(2048).nullish(),
+);
+const nullableOrgSchema = z.preprocess(
+  (value) => value === "" ? null : value,
+  z.string().trim().min(1).max(200).nullish(),
+);
+
 export const launchpadUserSchema = z.object({
   sub: z.string().min(1).max(255),
-  email: z.email().max(320).nullish(),
-  name: z.string().min(1).max(200).nullish(),
-  picture: z.url().max(2048).nullish(),
-  org: z.string().min(1).max(200),
+  email: nullableEmailSchema,
+  name: nullableNameSchema,
+  picture: nullablePictureSchema,
+  org: nullableOrgSchema,
   verified: z.boolean(),
   allows: z.record(z.string().max(100), z.unknown()).refine((value) => Object.keys(value).length <= 100).default({}),
-});
+}).transform((profile) => ({
+  ...profile,
+  // Personal Launchpad workspaces have no organization. Scope their synthetic
+  // organization to the immutable subject so one personal account never
+  // admits every other personal account.
+  org: profile.org ?? `personal:${profile.sub}`,
+}));
 
 export type LaunchpadUser = z.infer<typeof launchpadUserSchema>;
 export type LaunchpadBootstrap = z.infer<typeof launchpadBootstrapSchema>;

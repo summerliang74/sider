@@ -70,11 +70,25 @@ describe("fetchLaunchpadUser", () => {
     await expect(fetchLaunchpadUser("token")).rejects.toMatchObject({ reason: "unavailable" });
   });
 
+  it("scopes a personal workspace to the immutable subject", async () => {
+    mocks.fetch.mockReset();
+    mocks.fetch
+      .mockResolvedValueOnce(Response.json(bootstrap))
+      .mockResolvedValueOnce(Response.json({ ...profile, email: "", picture: "", org: null }));
+
+    await expect(fetchLaunchpadUser("access-token")).resolves.toEqual({
+      ...profile,
+      email: null,
+      picture: null,
+      org: "personal:user-1",
+    });
+  });
+
   it("rejects malformed userinfo responses", async () => {
     mocks.fetch.mockReset();
     mocks.fetch
       .mockResolvedValueOnce(Response.json(bootstrap))
-      .mockResolvedValueOnce(Response.json({ ...profile, org: null }));
+      .mockResolvedValueOnce(Response.json({ ...profile, sub: "" }));
 
     await expect(fetchLaunchpadUser("access-token")).rejects.toMatchObject({ reason: "invalid_profile" });
   });

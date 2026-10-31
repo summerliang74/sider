@@ -8,10 +8,13 @@ export class AdmissionError extends Error {
 
 export function assertLaunchpadAdmission(
   profile: LaunchpadUser,
-  policy: { allowedOrgs: string[]; requiredCapability: string | null },
+  policy: { allowedOrgs: string[]; adminSubs?: string[]; requiredCapability: string | null },
 ): void {
   if (!profile.verified) throw new AdmissionError("not_verified");
-  if (!policy.allowedOrgs.includes(profile.org)) throw new AdmissionError("org_not_allowed");
+  const explicitlyAllowedAdmin = policy.adminSubs?.includes(profile.sub) ?? false;
+  if (!explicitlyAllowedAdmin && !policy.allowedOrgs.includes(profile.org)) {
+    throw new AdmissionError("org_not_allowed");
+  }
   if (policy.requiredCapability && !profile.allows[policy.requiredCapability]) {
     throw new AdmissionError("capability_missing");
   }
