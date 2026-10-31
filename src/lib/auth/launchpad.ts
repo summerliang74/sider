@@ -36,17 +36,16 @@ export type LaunchpadUser = z.infer<typeof launchpadUserSchema>;
 export type LaunchpadBootstrap = z.infer<typeof launchpadBootstrapSchema>;
 
 export class LaunchpadAccessTokenError extends Error {
-  constructor(public readonly reason: "invalid" | "unavailable") {
+  constructor(public readonly reason: "invalid" | "invalid_profile" | "unavailable") {
     super(`Launchpad access token ${reason}`);
   }
 }
 
 export async function fetchLaunchpadUser(accessToken: string): Promise<LaunchpadUser> {
-  const env = getServerEnv();
-  const endpoint = new URL("/dashboard-api/oauth/userinfo", env.APP_BASE_URL);
   let response: Response;
   try {
-    response = await fetch(endpoint, {
+    const bootstrap = await bootstrapLaunchpad();
+    response = await fetch(bootstrap.userinfo_endpoint, {
       headers: { authorization: `Bearer ${accessToken}` },
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
@@ -58,7 +57,11 @@ export async function fetchLaunchpadUser(accessToken: string): Promise<Launchpad
     throw new LaunchpadAccessTokenError("invalid");
   }
   if (!response.ok) throw new LaunchpadAccessTokenError("unavailable");
-  return launchpadUserSchema.parse(await response.json());
+  try {
+    return launchpadUserSchema.parse(await response.json());
+  } catch {
+    throw new LaunchpadAccessTokenError("invalid_profile");
+  }
 }
 
 export async function bootstrapLaunchpad(): Promise<LaunchpadBootstrap> {

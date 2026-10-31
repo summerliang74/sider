@@ -64,7 +64,9 @@ export function LaunchpadLogin() {
       if (!response.ok || !result.redirectUrl) {
         if (result.error === "invalid_token") sdk.signOut();
         setMessage(
-          result.error === "org_not_allowed"
+          result.error === "invalid_token"
+            ? "Your Launchpad session expired. Please sign in again."
+            : result.error === "org_not_allowed"
             ? "Your Launchpad organization is not allowed to access Sider."
             : result.error === "not_verified"
               ? "Verify your Launchpad account before continuing."

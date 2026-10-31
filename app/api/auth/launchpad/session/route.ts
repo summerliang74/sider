@@ -76,6 +76,13 @@ export async function POST(request: Request): Promise<NextResponse> {
         { status: 401, headers: { "cache-control": "no-store" } },
       );
     }
+    if (error instanceof LaunchpadAccessTokenError) {
+      recordMetric("auth.platform_error", { reason: error.reason });
+      return NextResponse.json(
+        { error: "platform_unavailable" },
+        { status: 503, headers: { "cache-control": "no-store" } },
+      );
+    }
     if (error instanceof AdmissionError) {
       recordMetric("auth.denied", { reason: error.code });
       return NextResponse.json(
