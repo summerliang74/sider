@@ -119,10 +119,21 @@ export function SearchHub({
     void load(query, fileType, nextCollection);
   }
 
+  const emptyTitle = query
+    ? "No matching resources"
+    : collection === "peer-advisors"
+      ? "No Peer Advisor resources yet"
+      : "No resources yet";
+  const emptyMessage = query
+    ? "Try a shorter search, another file type, or different wording."
+    : collection === "peer-advisors"
+      ? "Resources tagged for Peer Advisors will appear in this view."
+      : "The first scanned resource will appear here after it is published.";
+
   return <>
-    <nav className="resource-tabs" aria-label="Resource collections">
+    <nav className="resource-tabs" aria-label="Resource views">
       <button type="button" className="resource-tab" aria-pressed={!collection} onClick={() => changeCollection(undefined)}>All resources</button>
-      <button type="button" className="resource-tab" aria-pressed={collection === "peer-advisors"} onClick={() => changeCollection("peer-advisors")}>Peer Advisors</button>
+      <button type="button" className="resource-tab" aria-pressed={collection === "peer-advisors"} onClick={() => changeCollection("peer-advisors")}><span className="resource-tab-icon" aria-hidden="true">PA</span> Peer Advisor library</button>
     </nav>
     <form className="searchbox" onSubmit={submit} role="search">
       <Image src="/figma/search.svg" alt="" width={20} height={20} aria-hidden="true" />
@@ -131,11 +142,11 @@ export function SearchHub({
       <button className="sr-only" type="submit" disabled={loading}>Search</button>
     </form>
     <p className="search-caption"><span>{query ? `Results for “${query}”` : collection === "peer-advisors" ? "Resources curated for Peer Advisors" : "Recently published resources"}</span><span>Only scanned, active files appear here</span></p>
-    <div className="toolbar"><h2>{query ? "Search results" : collection === "peer-advisors" ? "Peer Advisor resources" : "Latest resources"}</h2><div className="toolbar-actions"><span>{query ? "Relevant first" : "Most recent"}</span><label className="file-type-filter"><span className="sr-only">Filter by file type</span><select value={fileType ?? ""} onChange={(event) => changeFileType(event.target.value ? event.target.value as ResourceFileType : undefined)}><option value="">All file types</option>{resourceFileTypes.map((type) => <option key={type} value={type}>{resourceFileTypeLabels[type]}</option>)}</select></label><Link className="button primary" href="/resources/new" prefetch={false}>Upload resource</Link></div></div>
-    <div className="resource-table-head" aria-hidden="true"><span /><span /><span>Name</span><span>Author</span><span>Date</span><span>Tags</span><span>Size</span><span /></div>
+    <div className="toolbar"><h2>{query ? "Search results" : collection === "peer-advisors" ? "Peer Advisor resources" : "Latest resources"}</h2><div className="toolbar-actions"><span>{query ? "Sorted by relevance" : "Sorted by newest"}</span><label className="file-type-filter"><span className="sr-only">Filter by file type</span><select value={fileType ?? ""} onChange={(event) => changeFileType(event.target.value ? event.target.value as ResourceFileType : undefined)} aria-label="Filter by file type"><option value="">All file types</option>{resourceFileTypes.map((type) => <option key={type} value={type}>{resourceFileTypeLabels[type]}</option>)}</select></label><Link className="button primary" href="/resources/new" prefetch={false}>Upload resource</Link></div></div>
+    <div className="resource-table-head" aria-hidden="true"><span /><span>Name</span><span>Author</span><span>Date</span><span>Tags</span><span>Size</span></div>
     {pending ? <div className="challenge"><p>{error}</p><BotChallenge action="search" onToken={(token) => { if (token) void load(pending.query, pending.fileType, pending.collection, pending.cursor, token); }} /></div> : null}
     {!pending && error ? <p className="form-error" role="alert">{error}</p> : null}
-    {loading && items.length === 0 ? <div className="empty"><p>Loading resources…</p></div> : <ResourceList items={items} />}
+    {loading && items.length === 0 ? <div className="empty"><p>Loading resources…</p></div> : <ResourceList items={items} emptyTitle={emptyTitle} emptyMessage={emptyMessage} />}
     {nextCursor ? <div className="pagination"><button className="button" type="button" disabled={loading} onClick={() => void load(query, fileType, collection, nextCursor)}>{loading ? "Loading…" : "Load more"}</button></div> : null}
   </>;
 }

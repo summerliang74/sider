@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { preconnect } from "react-dom";
 
@@ -14,6 +14,11 @@ export function ResourceActions({ resourceId, isOwner, canDownload, downloadOrig
   const [reporting, setReporting] = useState(false);
   const [challengeAction, setChallengeAction] = useState<"download" | "report" | null>(null);
   const [botToken, setBotToken] = useState("");
+  const moreMenu = useRef<HTMLDetailsElement>(null);
+
+  function closeMoreMenu() {
+    if (moreMenu.current) moreMenu.current.open = false;
+  }
 
   async function download() {
     setMessage("Preparing a private download link…");
@@ -46,13 +51,35 @@ export function ResourceActions({ resourceId, isOwner, canDownload, downloadOrig
   }
 
   async function remove() {
+    closeMoreMenu();
     if (!window.confirm("Delete this resource? New download links will stop immediately.")) return;
     const response = await fetch(`/api/resources/${resourceId}`, { method: "DELETE" });
     if (response.ok) router.push("/me/resources"); else setMessage("The resource could not be deleted.");
   }
 
+  function toggleEdit() {
+    setEditing((current) => !current);
+    setReporting(false);
+    setChallengeAction(null);
+  }
+
+  function openReport() {
+    closeMoreMenu();
+    setReporting((current) => !current);
+    setEditing(false);
+    setChallengeAction(null);
+    setBotToken("");
+  }
+
   return <section className="resource-actions" aria-label="Resource actions">
-    <div className="action-row">{canDownload ? <button className="button primary" type="button" onClick={download}>Download</button> : null}{isOwner ? <><button className="button" type="button" onClick={() => setEditing(!editing)}>Edit details</button><button className="button danger" type="button" onClick={remove}>Delete</button></> : <button className="button" type="button" onClick={() => { setReporting(!reporting); setChallengeAction(null); setBotToken(""); }}>Report</button>}</div>
+    <div className="action-row">
+      {canDownload ? <button className="button primary" type="button" onClick={download}>Download</button> : null}
+      {isOwner ? <button className="button" type="button" aria-expanded={editing} onClick={toggleEdit}>Edit details</button> : null}
+      <details className="action-menu" ref={moreMenu}>
+        <summary className="button icon-button" aria-label="More resource actions"><span aria-hidden="true">•••</span></summary>
+        <div className="action-menu-popover">{isOwner ? <button className="danger" type="button" onClick={remove}>Delete resource</button> : <button type="button" onClick={openReport}>{reporting ? "Close report form" : "Report resource"}</button>}</div>
+      </details>
+    </div>
     {challengeAction ? <div className="challenge"><BotChallenge action={challengeAction} onToken={setBotToken} /></div> : null}
     {message ? <p className="action-message" role="status">{message}</p> : null}
     {reporting ? <form className="inline-form" onSubmit={report}><label className="field"><span>Reason</span><select name="reason" required><option value="copyright_privacy">Copyright or privacy</option><option value="malware">Malicious file</option><option value="inappropriate">Inappropriate content</option><option value="spam">Spam</option><option value="other">Other</option></select></label><label className="field"><span>Details</span><textarea name="details" maxLength={1000} rows={3} /></label><button className="button" type="submit" disabled={challengeAction === "report" && !botToken}>Submit report</button></form> : null}
