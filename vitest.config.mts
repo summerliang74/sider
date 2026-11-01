@@ -13,6 +13,6 @@ export default defineConfig({
     environment: "node",
     clearMocks: true,
     restoreMocks: true,
-    exclude: [...configDefaults.exclude, "services/malware-scanner/**", "work/**"],
+    exclude: [...configDefaults.exclude, ".tmp/**", "services/malware-scanner/**", "work/**"],
   },
 });

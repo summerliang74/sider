@@ -9,6 +9,8 @@ import { decodeResourceCursor, encodeResourceCursor } from "@/src/lib/resource-c
 import {
   resourceFileTypeMimeTypes,
   resourceFileTypes,
+  resourceCollections,
+  type ResourceCollection,
   type ResourceFileType,
 } from "@/src/lib/resource-search";
 import type { CurrentUser } from "@/src/lib/auth/session";
@@ -20,6 +22,7 @@ const HEADLINE_END = "\uE001";
 export const resourceSearchSchema = z.object({
   q: z.string().trim().max(120).default(""),
   fileType: z.enum(resourceFileTypes).optional(),
+  collection: z.enum(resourceCollections).optional(),
   cursor: z.string().max(1000).optional(),
 });
 
@@ -89,6 +92,7 @@ export function parseSearchHeadline(value: unknown, fallback: string): SearchHig
 export async function listActiveResources(input: {
   q: string;
   fileType?: ResourceFileType;
+  collection?: ResourceCollection;
   cursor?: string;
 }): Promise<{ items: ResourceListItem[]; nextCursor: string | null }> {
   const q = input.q.trim().slice(0, 120);
@@ -127,6 +131,13 @@ export async function listActiveResources(input: {
   const filters = [eq(resources.status, "active")];
   if (input.fileType) {
     filters.push(eq(resources.mimeType, resourceFileTypeMimeTypes[input.fileType]));
+  }
+  if (input.collection === "peer-advisors") {
+    filters.push(sql<boolean>`exists (
+      select 1
+      from unnest(${resources.tags}) as resource_tag(value)
+      where regexp_replace(lower(trim(resource_tag.value)), '[^a-z0-9]+', '', 'g') = 'peeradvisors'
+    )`);
   }
   if (q) {
     filters.push(

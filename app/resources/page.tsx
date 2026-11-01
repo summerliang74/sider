@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/src/components/app-shell";
 import { SearchHub, type SerializedResourceListItem } from "@/src/components/search-hub";
 import { getCurrentUser } from "@/src/lib/auth/session";
-import { isResourceFileType } from "@/src/lib/resource-search";
+import { isResourceCollection, isResourceFileType } from "@/src/lib/resource-search";
 import { listActiveResources } from "@/src/lib/resources";
 
 export const metadata = { title: "Resources" };
@@ -20,8 +20,9 @@ export default async function ResourcesPage({
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 120) : "";
   const fileType = isResourceFileType(params.type) ? params.type : undefined;
+  const collection = isResourceCollection(params.collection) ? params.collection : undefined;
   const initialResult = !query && !fileType
-    ? await listActiveResources({ q: "" })
+    ? await listActiveResources({ q: "", collection })
     : undefined;
   const initialItems: SerializedResourceListItem[] | undefined = initialResult?.items.map((item) => ({
     ...item,
@@ -38,6 +39,7 @@ export default async function ResourcesPage({
         <SearchHub
           initialQuery={query}
           initialFileType={fileType}
+          initialCollection={collection}
           initialItems={initialItems}
           initialNextCursor={initialResult?.nextCursor}
         />

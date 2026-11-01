@@ -8,7 +8,10 @@ export const resourceFileTypes = [
   "jpeg",
 ] as const;
 
+export const resourceCollections = ["peer-advisors"] as const;
+
 export type ResourceFileType = (typeof resourceFileTypes)[number];
+export type ResourceCollection = (typeof resourceCollections)[number];
 
 export const resourceFileTypeLabels: Record<ResourceFileType, string> = {
   pdf: "PDF",
@@ -32,4 +35,8 @@ export const resourceFileTypeMimeTypes: Record<ResourceFileType, string> = {
 
 export function isResourceFileType(value: unknown): value is ResourceFileType {
   return typeof value === "string" && resourceFileTypes.includes(value as ResourceFileType);
+}
+
+export function isResourceCollection(value: unknown): value is ResourceCollection {
+  return typeof value === "string" && resourceCollections.includes(value as ResourceCollection);
 }

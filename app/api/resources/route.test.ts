@@ -69,12 +69,24 @@ describe("GET /api/resources", () => {
     expect(mocks.ipLimit).toHaveBeenCalledWith("search", "192.0.2.1");
     expect(mocks.userLimit).toHaveBeenCalledWith("search", user.id);
     expect(mocks.bot).toHaveBeenCalledWith(expect.objectContaining({ required: false, action: "search" }));
-    expect(mocks.list).toHaveBeenCalledWith({ q: "guide", fileType: "pdf", cursor: undefined });
+    expect(mocks.list).toHaveBeenCalledWith({ q: "guide", fileType: "pdf", collection: undefined, cursor: undefined });
     expect(await response.json()).toMatchObject({ items: [{ title: "Guide", publishedAt: publishedAt.toISOString() }], nextCursor: "next" });
   });
 
   it("rejects an unsupported file type filter", async () => {
     const response = await GET(new Request("https://app.school.test/api/resources?type=exe"));
+    expect(response.status).toBe(400);
+    expect(mocks.list).not.toHaveBeenCalled();
+  });
+
+  it("forwards the Peer Advisors collection filter", async () => {
+    const response = await GET(new Request("https://app.school.test/api/resources?collection=peer-advisors"));
+    expect(response.status).toBe(200);
+    expect(mocks.list).toHaveBeenCalledWith({ q: "", fileType: undefined, collection: "peer-advisors", cursor: undefined });
+  });
+
+  it("rejects an unsupported resource collection", async () => {
+    const response = await GET(new Request("https://app.school.test/api/resources?collection=staff-only"));
     expect(response.status).toBe(400);
     expect(mocks.list).not.toHaveBeenCalled();
   });
