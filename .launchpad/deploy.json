@@ -8,6 +8,8 @@
   "healthPath": "/api/health",
   "nodeVersion": ">=20.9 <25",
   "ignore": [
+    ".env",
+    ".env.*",
     ".agents",
     ".codex",
     ".runtime",
