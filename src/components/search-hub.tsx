@@ -32,7 +32,7 @@ export function SearchHub({
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [fileType, setFileType] = useState<ResourceFileType | undefined>(initialFileType);
-  const [collection, setCollection] = useState<ResourceCollection | undefined>(initialCollection);
+  const collection = initialCollection;
   const [items, setItems] = useState<ResourceListItem[]>(() => (initialItems ?? []).map((item) => ({
     ...item,
     publishedAt: new Date(item.publishedAt),
@@ -109,16 +109,6 @@ export function SearchHub({
     void load(query, nextFileType, collection);
   }
 
-  function changeCollection(nextCollection: ResourceCollection | undefined) {
-    if (nextCollection === collection) return;
-    setCollection(nextCollection);
-    setItems([]);
-    setNextCursor(null);
-    setPending(null);
-    replaceSearchUrl(query, fileType, nextCollection);
-    void load(query, fileType, nextCollection);
-  }
-
   const emptyTitle = query
     ? "No matching resources"
     : collection === "peer-advisors"
@@ -131,10 +121,6 @@ export function SearchHub({
       : "The first scanned resource will appear here after it is published.";
 
   return <>
-    <nav className="resource-tabs" aria-label="Resource views">
-      <button type="button" className="resource-tab" aria-pressed={!collection} onClick={() => changeCollection(undefined)}>All resources</button>
-      <button type="button" className="resource-tab" aria-pressed={collection === "peer-advisors"} onClick={() => changeCollection("peer-advisors")}><span className="resource-tab-icon" aria-hidden="true">PA</span> Peer Advisor library</button>
-    </nav>
     <form className="searchbox" onSubmit={submit} role="search">
       <Image src="/figma/search.svg" alt="" width={20} height={20} aria-hidden="true" />
       <label className="sr-only" htmlFor="resource-search">Search resources</label>

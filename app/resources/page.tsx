@@ -21,6 +21,7 @@ export default async function ResourcesPage({
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 120) : "";
   const fileType = isResourceFileType(params.type) ? params.type : undefined;
   const collection = isResourceCollection(params.collection) ? params.collection : undefined;
+  const isPeerAdvisorView = collection === "peer-advisors";
   const initialResult = !query && !fileType
     ? await listActiveResources({ q: "", collection })
     : undefined;
@@ -30,13 +31,16 @@ export default async function ResourcesPage({
   }));
 
   return (
-    <AppShell user={user} current="resources">
+    <AppShell user={user} current={isPeerAdvisorView ? "peer-advisors" : "resources"}>
       <div className="content">
         <section className="hero">
-          <div className="hero-copy"><p className="eyebrow">RESOURCE LIBRARY</p><h1>Find what your classmates<br />found useful.</h1><p>A private library of notes, guides, worksheets, and reference files shared by SHSID students, for SHSID students.</p></div>
+          {isPeerAdvisorView
+            ? <div className="hero-copy"><p className="eyebrow">PEER ADVISOR LIBRARY</p><h1>Resources for students<br />who support others.</h1><p>A focused collection of guides, references, and materials curated for SHSID Peer Advisors.</p></div>
+            : <div className="hero-copy"><p className="eyebrow">RESOURCE LIBRARY</p><h1>Find what your classmates<br />found useful.</h1><p>A private library of notes, guides, worksheets, and reference files shared by SHSID students, for SHSID students.</p></div>}
           <Image className="shelf-illustration" src="/figma/shelf-illustration.svg" alt="" width={310} height={150} aria-hidden="true" />
         </section>
         <SearchHub
+          key={collection ?? "all-resources"}
           initialQuery={query}
           initialFileType={fileType}
           initialCollection={collection}
