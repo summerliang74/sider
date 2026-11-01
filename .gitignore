@@ -12,3 +12,6 @@ coverage/
 npm-debug.log*
 .neon
 .runtime/
+.tmp/
+.launchpad.json
+work/

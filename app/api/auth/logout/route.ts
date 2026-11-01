@@ -18,7 +18,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const response = NextResponse.redirect(new URL("/login", env.APP_BASE_URL), 303);
-  await revokeCurrentSession(response);
+  await revokeCurrentSession(response, request);
   response.headers.set("cache-control", "no-store");
   return response;
 }

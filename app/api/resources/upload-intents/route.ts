@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   const ip = getClientIp(request);
   try {
     const ipLimit = await enforceIpRateLimit("upload", ip);
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     if (!user) return noStoreJson({ error: "unauthorized" }, { status: 401 });
     const userLimit = await enforceUserRateLimit("upload", user.id);
     const parsed = uploadIntentSchema.safeParse(await request.json());

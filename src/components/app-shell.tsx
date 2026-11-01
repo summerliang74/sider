@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import type { CurrentUser } from "@/src/lib/auth/session";
-import { getServerEnv } from "@/src/lib/env";
+import { LogoutButton } from "./logout-button";
 
 export function AppShell({
   user,
@@ -21,8 +21,6 @@ export function AppShell({
     .join("")
     .slice(0, 2)
     .toUpperCase();
-  const localAuth = getServerEnv().AUTH_MODE === "local";
-
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -34,7 +32,7 @@ export function AppShell({
         <nav className="nav" aria-label="Primary navigation">
           <Link className={current === "resources" ? "selected" : undefined} href="/resources" prefetch={false}><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>Resources</span></Link>
           <Link className={current === "mine" ? "selected" : undefined} href="/me/resources" prefetch={false}><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>My uploads</span></Link>
-          {user.role === "admin" ? <><Link className={current === "admin" ? "selected" : undefined} href="/admin/reports" prefetch={false}>⚑ <span>Reports</span></Link>{localAuth ? <Link href="/admin/invites" prefetch={false}>＋ <span>Invitations</span></Link> : null}<Link href="/admin/audit" prefetch={false}>☷ <span>Audit log</span></Link></> : null}
+          {user.role === "admin" ? <><Link className={current === "admin" ? "selected" : undefined} href="/admin/reports" prefetch={false}>⚑ <span>Reports</span></Link><Link href="/admin/audit" prefetch={false}>☷ <span>Audit log</span></Link></> : null}
         </nav>
         <div className="sidebar-note">
           <strong>Private workspace</strong>
@@ -43,7 +41,7 @@ export function AppShell({
         <div className="profile">
           <span className="avatar" aria-hidden="true">{initials || "S"}</span>
           <span className="profile-copy"><strong>{user.displayName}</strong><small>{user.role}</small></span>
-          <form action="/api/auth/logout" method="post"><button type="submit" aria-label="Sign out" title="Sign out">↪</button></form>
+          <LogoutButton ariaLabel="Sign out" title="Sign out">↪</LogoutButton>
         </div>
       </aside>
       <main className="main">
@@ -51,7 +49,7 @@ export function AppShell({
           <Link className="mobile-brand" href="/resources" prefetch={false}><Image src="/figma/sider-mark.svg" alt="" width={28} height={28} aria-hidden="true" /> Sider</Link>
           <div className="breadcrumbs"><span>Workspace</span><span aria-hidden="true">/</span><span>{title ?? (current === "resources" ? "Resources" : current === "mine" ? "My uploads" : "Reports")}</span></div>
           <div className="top-meta"><Image src="/figma/verified-dot.svg" alt="" width={8} height={8} aria-hidden="true" /> Private &amp; verified</div>
-          <nav className="mobile-links" aria-label="Mobile navigation"><Link href="/resources" prefetch={false}>Resources</Link><Link href="/me/resources" prefetch={false}>My uploads</Link>{user.role === "admin" ? <Link href="/admin/reports" prefetch={false}>Admin</Link> : null}<form action="/api/auth/logout" method="post"><button type="submit">Sign out</button></form></nav>
+          <nav className="mobile-links" aria-label="Mobile navigation"><Link href="/resources" prefetch={false}>Resources</Link><Link href="/me/resources" prefetch={false}>My uploads</Link>{user.role === "admin" ? <Link href="/admin/reports" prefetch={false}>Admin</Link> : null}<LogoutButton>Sign out</LogoutButton></nav>
         </header>
         {children}
       </main>

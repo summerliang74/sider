@@ -24,30 +24,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!requireSameOrigin(request)) return noStoreJson({ error: "forbidden" }, { status: 403 });
   const ip = getClientIp(request);
   try {
-    const [ipLimit, user, parsed, params] = await Promise.all([
-      enforceIpRateLimit("download", ip),
-      getCurrentUser(),
-      request.json().catch(() => ({})).then((body) => bodySchema.safeParse(body)),
-      context.params,
-    ]);
+    const ipLimit = await enforceIpRateLimit("download", ip);
+    const user = await getCurrentUser(request);
     if (!user) return noStoreJson({ error: "unauthorized" }, { status: 401 });
+    const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) return noStoreJson({ error: "invalid_request" }, { status: 400 });
-    const { id } = params;
+    const { id } = await context.params;
     if (!z.uuid().safeParse(id).success) return noStoreJson({ error: "resource_unavailable" }, { status: 404 });
 
-    const [userLimit, resourceRows] = await Promise.all([
-      enforceUserRateLimit("download", user.id),
-      getDatabase()
-        .select({
-          objectKey: resources.objectKey,
-          filename: resources.originalFilename,
-          mimeType: resources.mimeType,
-          sizeBytes: resources.sizeBytes,
-        })
-        .from(resources)
-        .where(and(eq(resources.id, id), eq(resources.status, "active")))
-        .limit(1),
-    ]);
+    const userLimit = await enforceUserRateLimit("download", user.id);
     await verifyBotChallenge({
       required: ipLimit.risky || userLimit.risky,
       token: parsed.data.botToken,
@@ -55,6 +40,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       ip,
     });
 
+    const resourceRows = await getDatabase()
+      .select({
+        objectKey: resources.objectKey,
+        filename: resources.originalFilename,
+        mimeType: resources.mimeType,
+        sizeBytes: resources.sizeBytes,
+      })
+      .from(resources)
+      .where(and(eq(resources.id, id), eq(resources.status, "active")))
+      .limit(1);
     const [resource] = resourceRows;
     if (!resource) return noStoreJson({ error: "resource_unavailable" }, { status: 404 });
     if (!getFilePreviewKind(resource.mimeType, resource.sizeBytes)) {

@@ -8,16 +8,12 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NEXT_STANDALONE=1 \
     NODE_ENV=production \
-    AUTH_MODE=local \
-    LOCAL_AUTH_USERNAME=admin \
-    LOCAL_AUTH_PASSWORD=build-only-password-that-is-never-used-at-runtime \
-    LOCAL_AUTH_DISPLAY_NAME=Administrator \
     APP_BASE_URL=https://build.invalid \
     SESSION_SECRET=build-only-session-secret-that-is-never-used \
     SESSION_TOKEN_PEPPER=build-only-session-pepper-that-is-never-used \
     DATABASE_URL=postgresql://build:build@database.invalid/app?sslmode=require \
-    SHSID_ALLOWED_ORGS=local \
-    SHSID_ADMIN_SUBS=local:admin \
+    SHSID_ALLOWED_ORGS=school \
+    SHSID_ADMIN_SUBS=launchpad:admin \
     SHSID_LAUNCHPAD_OIDC_DEV=0 \
     S3_ENDPOINT=https://storage.invalid \
     S3_REGION=local \
@@ -50,7 +46,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrate.mjs ./scripts/migrate.mjs
-COPY --from=builder --chown=nextjs:nodejs /app/scripts/create-local-user.mjs ./scripts/create-local-user.mjs
 COPY --from=dependencies --chown=nextjs:nodejs /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
 COPY --from=dependencies --chown=nextjs:nodejs /app/node_modules/postgres ./node_modules/postgres
 USER nextjs

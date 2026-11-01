@@ -1,7 +1,9 @@
 "use client";
 
 import Script from "next/script";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+import { ensureAuthTransport, saveBrowserSession } from "@/src/lib/auth/browser-session";
 
 import { BotChallenge } from "./bot-challenge";
 
@@ -23,14 +25,22 @@ declare global {
   }
 }
 
-export function LaunchpadLogin() {
+export function LaunchpadLogin({ challengeRequired = false }: { challengeRequired?: boolean }) {
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const [needsChallenge, setNeedsChallenge] = useState(false);
+  const [message, setMessage] = useState(
+    challengeRequired ? "Please complete the traffic check before continuing." : "",
+  );
+  const [needsChallenge, setNeedsChallenge] = useState(challengeRequired);
   const [botToken, setBotToken] = useState("");
   const syncing = useRef(false);
 
-  async function completeSession(challengeToken?: string) {
+  useEffect(() => {
+    void ensureAuthTransport().catch(() => {
+      setMessage("Sider could not initialize secure sign-in in this browser.");
+    });
+  }, []);
+
+  async function completeSession(challengeToken?: string, interactive = true) {
     const sdk = window.LaunchpadAuth;
     if (!sdk || syncing.current) return;
     syncing.current = true;
@@ -40,12 +50,15 @@ export function LaunchpadLogin() {
       const state = await sdk.ready();
       const accessToken = state.accessToken ?? sdk.state.accessToken;
       if (!state.user || !accessToken) {
+        if (interactive) await sdk.signIn();
         setBusy(false);
         return;
       }
 
       const response = await fetch("/api/auth/launchpad/session", {
         method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           accessToken,
@@ -53,7 +66,12 @@ export function LaunchpadLogin() {
           returnTo: "/resources",
         }),
       });
-      const result = await response.json() as { redirectUrl?: string; error?: string };
+      const result = await response.json() as {
+        accessToken?: string;
+        expiresAt?: string;
+        redirectUrl?: string;
+        error?: string;
+      };
       if (result.error === "bot_challenge_required") {
         setNeedsChallenge(true);
         setBotToken("");
@@ -61,19 +79,22 @@ export function LaunchpadLogin() {
         setBusy(false);
         return;
       }
-      if (!response.ok || !result.redirectUrl) {
+      if (!response.ok || !result.accessToken || !result.expiresAt || !result.redirectUrl) {
         if (result.error === "invalid_token") sdk.signOut();
-        setMessage(
-          result.error === "invalid_token"
-            ? "Your Launchpad session expired. Please sign in again."
-            : result.error === "org_not_allowed"
-            ? "Your Launchpad organization is not allowed to access Sider."
-            : result.error === "not_verified"
-              ? "Verify your Launchpad account before continuing."
-              : result.error === "suspended"
-                ? "This Sider account is suspended."
-                : "Launchpad sign-in could not be completed. Please try again.",
-        );
+        setMessage(result.error === "suspended"
+          ? "This Sider account is suspended."
+          : "Launchpad sign-in could not be completed. Please try again.");
+        setBusy(false);
+        return;
+      }
+
+      await saveBrowserSession(result.accessToken, result.expiresAt);
+      const sessionCheck = await fetch("/api/me", {
+        cache: "no-store",
+        headers: { "x-sider-session": result.accessToken },
+      });
+      if (!sessionCheck.ok) {
+        setMessage("Sider could not save your session. Please try again.");
         setBusy(false);
         return;
       }
@@ -97,8 +118,13 @@ export function LaunchpadLogin() {
     setBusy(true);
     setMessage("");
     try {
-      await sdk.ready();
-      await sdk.signIn();
+      await ensureAuthTransport();
+      const state = await sdk.ready();
+      if (state.user && state.accessToken) {
+        await completeSession();
+      } else {
+        await sdk.signIn();
+      }
     } catch {
       setMessage("Launchpad sign-in is temporarily unavailable.");
       setBusy(false);
@@ -109,7 +135,7 @@ export function LaunchpadLogin() {
     <Script
       src="/dashboard-api/oauth/sdk.js"
       strategy="afterInteractive"
-      onReady={() => { void completeSession(); }}
+      onReady={() => { if (!needsChallenge) void completeSession(undefined, false); }}
       onError={() => { setMessage("Launchpad sign-in is temporarily unavailable."); }}
     />
     {needsChallenge ? <div className="challenge"><p>{message}</p><BotChallenge action="oauth_start" onToken={setBotToken} /></div> : null}

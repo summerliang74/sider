@@ -12,16 +12,6 @@ const secret = z
 const serverEnvSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-    AUTH_MODE: z.enum(["launchpad", "local"]).default("launchpad"),
-    LOCAL_AUTH_USERNAME: z.string().trim().min(3).max(64).default("admin"),
-    LOCAL_AUTH_PASSWORD: secret.optional(),
-    LOCAL_AUTH_DISPLAY_NAME: z.string().trim().min(1).max(120).default("Administrator"),
-    REGISTRATION_MODE: z.enum(["closed", "invite"]).default("closed"),
-    REGISTRATION_INVITE_PEPPER: secret.optional(),
-    REGISTRATION_INVITE_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(72),
-    REGISTRATION_IP_LIMIT: z.coerce.number().int().positive().default(30),
-    REGISTRATION_IDENTITY_LIMIT: z.coerce.number().int().positive().default(10),
-    REGISTRATION_FORCE_CHALLENGE: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
     APP_BASE_URL: z.url(),
     SESSION_SECRET: secret,
     SESSION_TOKEN_PEPPER: secret,
@@ -60,30 +50,6 @@ const serverEnvSchema = z
     const isLocalhost = ["localhost", "127.0.0.1", "[::1]"].includes(appUrl.hostname);
     const scannerUrlDisabled = env.MALWARE_SCAN_URL === "disabled";
     const scannerTokenDisabled = env.MALWARE_SCAN_TOKEN === "disabled";
-    if (env.AUTH_MODE === "local" && !env.LOCAL_AUTH_PASSWORD) {
-      context.addIssue({
-        code: "custom",
-        path: ["LOCAL_AUTH_PASSWORD"],
-        message: "is required when AUTH_MODE=local",
-      });
-    }
-    if (env.REGISTRATION_MODE === "invite" && !env.REGISTRATION_INVITE_PEPPER) {
-      context.addIssue({
-        code: "custom",
-        path: ["REGISTRATION_INVITE_PEPPER"],
-        message: "is required when REGISTRATION_MODE=invite",
-      });
-    }
-    if (
-      env.REGISTRATION_INVITE_PEPPER &&
-      [env.SESSION_SECRET, env.SESSION_TOKEN_PEPPER].includes(env.REGISTRATION_INVITE_PEPPER)
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["REGISTRATION_INVITE_PEPPER"],
-        message: "must be distinct from session secrets",
-      });
-    }
     if (scannerUrlDisabled !== scannerTokenDisabled) {
       context.addIssue({
         code: "custom",
@@ -133,12 +99,6 @@ const serverEnvSchema = z
         ["BOT_VERIFY_SECRET", env.BOT_VERIFY_SECRET],
         ["CRON_SECRET", env.CRON_SECRET],
       ];
-      if (env.AUTH_MODE === "local" && env.LOCAL_AUTH_PASSWORD) {
-        productionValues.push(["LOCAL_AUTH_PASSWORD", env.LOCAL_AUTH_PASSWORD]);
-      }
-      if (env.REGISTRATION_INVITE_PEPPER) {
-        productionValues.push(["REGISTRATION_INVITE_PEPPER", env.REGISTRATION_INVITE_PEPPER]);
-      }
       if (!scannerUrlDisabled && !scannerTokenDisabled) {
         productionValues.push(["MALWARE_SCAN_URL", env.MALWARE_SCAN_URL]);
         productionValues.push(["MALWARE_SCAN_TOKEN", env.MALWARE_SCAN_TOKEN]);
@@ -179,7 +139,6 @@ const serverEnvSchema = z
       : env.SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL.toLowerCase(),
     s3ForcePathStyle: env.S3_FORCE_PATH_STYLE === "true",
     malwareScanEnabled: env.MALWARE_SCAN_URL !== "disabled",
-    localAuthSub: `local:${env.LOCAL_AUTH_USERNAME.toLowerCase()}`,
   }));
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -194,7 +153,6 @@ export function getServerEnv(): ServerEnv {
   const hasExplicitS3Config = Boolean(process.env.S3_ENDPOINT);
   const resolvedEnv = {
     ...process.env,
-    AUTH_MODE: process.env.SHSID_AUTH_MODE ?? process.env.AUTH_MODE,
     SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL:
       process.env.SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL ?? process.env.LAUNCHPAD_ORG_DISCOVERY_EMAIL,
     SHSID_LAUNCHPAD_OIDC_DEV:

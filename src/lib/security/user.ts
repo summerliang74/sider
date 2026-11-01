@@ -13,7 +13,7 @@ export async function authorizeUserRequest(request: Request, operation: RateOper
 > {
   try {
     const ip = await enforceIpRateLimit(operation, getClientIp(request));
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     if (!user) return { response: noStoreJson({ error: "unauthorized" }, { status: 401 }) };
     const userLimit = await enforceUserRateLimit(operation, user.id);
     return { user, risky: ip.risky || userLimit.risky };

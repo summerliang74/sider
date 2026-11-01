@@ -14,7 +14,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const ip = getClientIp(request);
     await enforceIpRateLimit("upload_transfer", ip);
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     if (!user) return noStoreJson({ error: "unauthorized" }, { status: 401 });
     await enforceUserRateLimit("upload_transfer", user.id);
     const { id } = await params;

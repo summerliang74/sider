@@ -7,15 +7,15 @@ import { enforceIpRateLimit, enforceUserRateLimit } from "./rate-limit";
 import { getClientIp } from "./request";
 import { securityErrorResponse } from "./responses";
 
-export async function authorizeAdminRequest(request: Request, operation: "admin" | "invite_create" | "invite_revoke" = "admin"): Promise<
+export async function authorizeAdminRequest(request: Request): Promise<
   | { user: CurrentUser; response?: never }
   | { user?: never; response: Response }
 > {
   try {
-    await enforceIpRateLimit(operation, getClientIp(request));
-    const user = await getCurrentUser();
+    await enforceIpRateLimit("admin", getClientIp(request));
+    const user = await getCurrentUser(request);
     if (!user) return { response: noStoreJson({ error: "unauthorized" }, { status: 401 }) };
-    await enforceUserRateLimit(operation, user.id);
+    await enforceUserRateLimit("admin", user.id);
     if (user.role !== "admin") return { response: noStoreJson({ error: "forbidden" }, { status: 403 }) };
     return { user };
   } catch (error) {

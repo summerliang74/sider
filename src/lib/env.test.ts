@@ -6,15 +6,12 @@ const originalEnv = process.env;
 
 const baseEnv: NodeJS.ProcessEnv = {
   NODE_ENV: "test",
-  AUTH_MODE: "local",
-  LOCAL_AUTH_USERNAME: "admin",
-  LOCAL_AUTH_PASSWORD: "local-password-that-is-at-least-32-characters",
   APP_BASE_URL: "https://app.school.test",
   SESSION_SECRET: "session-secret-that-is-at-least-32-characters",
   SESSION_TOKEN_PEPPER: "session-pepper-that-is-at-least-32-characters",
   DATABASE_URL: "postgresql://user:password@db.test/app?sslmode=require",
-  SHSID_ALLOWED_ORGS: "local",
-  SHSID_ADMIN_SUBS: "local:admin",
+  SHSID_ALLOWED_ORGS: "school",
+  SHSID_ADMIN_SUBS: "launchpad:admin",
   SHSID_LAUNCHPAD_OIDC_DEV: "0",
   S3_ENDPOINT: "https://storage.test",
   S3_REGION: "test",
@@ -31,7 +28,7 @@ const baseEnv: NodeJS.ProcessEnv = {
   CRON_SECRET: "cron-secret-that-is-at-least-32-characters",
 };
 
-describe("registration environment", () => {
+describe("server environment", () => {
   beforeEach(() => {
     process.env = { ...baseEnv };
     resetEnvForTests();
@@ -42,33 +39,21 @@ describe("registration environment", () => {
     resetEnvForTests();
   });
 
-  it("defaults registration to closed without requiring an invitation pepper", () => {
-    expect(getServerEnv().REGISTRATION_MODE).toBe("closed");
+  it("parses Launchpad identity policy", () => {
+    const env = getServerEnv();
+    expect(env.allowedOrgs).toEqual(["school"]);
+    expect(env.adminSubs).toEqual(["launchpad:admin"]);
+    expect(env.launchpadOidcDev).toBe("0");
   });
 
-  it("requires a distinct strong invitation pepper when registration is open", () => {
-    process.env.REGISTRATION_MODE = "invite";
-    expect(() => getServerEnv()).toThrow(/REGISTRATION_INVITE_PEPPER/);
+  it("rejects production Launchpad development mode", () => {
+    process.env = { ...process.env, NODE_ENV: "production", SHSID_LAUNCHPAD_OIDC_DEV: "1" };
+    expect(() => getServerEnv()).toThrow(/SHSID_LAUNCHPAD_OIDC_DEV/);
+  });
+
+  it("requires at least one allowed Launchpad organization", () => {
+    process.env.SHSID_ALLOWED_ORGS = " , ";
     resetEnvForTests();
-    process.env.REGISTRATION_INVITE_PEPPER = "invite-pepper-that-is-at-least-32-characters";
-    expect(getServerEnv().REGISTRATION_MODE).toBe("invite");
-  });
-
-  it("rejects reuse of a session secret as the invitation pepper", () => {
-    process.env.REGISTRATION_MODE = "invite";
-    process.env.REGISTRATION_INVITE_PEPPER = baseEnv.SESSION_TOKEN_PEPPER;
-    expect(() => getServerEnv()).toThrow(/distinct from session secrets/);
-  });
-
-  it("rejects unknown registration modes", () => {
-    process.env.REGISTRATION_MODE = "public";
-    expect(() => getServerEnv()).toThrow(/REGISTRATION_MODE/);
-  });
-
-  it("defaults emergency challenge mode off and accepts an explicit switch", () => {
-    expect(getServerEnv().REGISTRATION_FORCE_CHALLENGE).toBe(false);
-    resetEnvForTests();
-    process.env.REGISTRATION_FORCE_CHALLENGE = "true";
-    expect(getServerEnv().REGISTRATION_FORCE_CHALLENGE).toBe(true);
+    expect(() => getServerEnv()).toThrow(/contains no values/);
   });
 });

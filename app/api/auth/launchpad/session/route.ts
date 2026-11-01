@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { isOrgDiscoveryEligible } from "@/src/lib/auth/discovery";
 import { fetchLaunchpadUser, LaunchpadAccessTokenError } from "@/src/lib/auth/launchpad";
-import { ORG_DISCOVERY_TTL_SECONDS, orgDiscoveryCookieName } from "@/src/lib/auth/constants";
-import { issueSession } from "@/src/lib/auth/session";
+import { createSession } from "@/src/lib/auth/session";
 import { AdmissionError, admitAndUpsertUser } from "@/src/lib/auth/users";
-import { sealJson } from "@/src/lib/crypto";
-import { getServerEnv } from "@/src/lib/env";
 import { verifyBotChallenge } from "@/src/lib/security/bot";
 import { enforceIpRateLimit } from "@/src/lib/security/rate-limit";
 import { getClientIp, requireSameOrigin } from "@/src/lib/security/request";
@@ -24,46 +20,41 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const env = getServerEnv();
-  if (env.AUTH_MODE !== "launchpad") {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
-  }
+  const contentType = request.headers.get("content-type") ?? "";
+  const isJson = contentType.startsWith("application/json");
+  const errorResponse = (error: string, status: number) =>
+    NextResponse.json({ error }, { status, headers: { "cache-control": "no-store" } });
+
   if (!requireSameOrigin(request)) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "forbidden" }, { status: 403, headers: { "cache-control": "no-store" } });
+  }
+  if (!isJson) {
+    return NextResponse.json(
+      { error: "unsupported_media_type" },
+      { status: 415, headers: { "cache-control": "no-store" } },
+    );
   }
 
   try {
-    const parsed = bodySchema.safeParse(await request.json().catch(() => null));
-    if (!parsed.success) return NextResponse.json({ error: "invalid_request" }, { status: 400 });
+    const body = await request.json().catch(() => null);
+    const parsed = bodySchema.safeParse(body);
+    if (!parsed.success) return errorResponse("invalid_request", 400);
 
     const ip = getClientIp(request);
     const rate = await enforceIpRateLimit("oauth_start", ip);
     await verifyBotChallenge({ required: rate.risky, token: parsed.data.botToken, action: "oauth_start", ip });
 
     const profile = await fetchLaunchpadUser(parsed.data.accessToken);
-    if (isOrgDiscoveryEligible(profile, env.orgDiscoveryEmail)) {
-      const expiresAt = Date.now() + ORG_DISCOVERY_TTL_SECONDS * 1000;
-      const response = NextResponse.json({ redirectUrl: "/auth/discovery" });
-      response.headers.set("cache-control", "no-store");
-      response.cookies.set(
-        orgDiscoveryCookieName(env.NODE_ENV === "production"),
-        sealJson({ sub: profile.sub, email: profile.email, org: profile.org, expiresAt }, env.SESSION_SECRET),
-        {
-          httpOnly: true,
-          secure: env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          expires: new Date(expiresAt),
-        },
-      );
-      recordMetric("auth.org_discovery");
-      return response;
-    }
-
     const userId = await admitAndUpsertUser(profile);
-    const response = NextResponse.json({ redirectUrl: parsed.data.returnTo });
-    response.headers.set("cache-control", "no-store");
-    await issueSession(response, userId);
+    const session = await createSession(userId);
+    const response = NextResponse.json(
+      {
+        accessToken: session.token,
+        expiresAt: session.expiresAt.toISOString(),
+        redirectUrl: parsed.data.returnTo,
+      },
+      { headers: { "cache-control": "no-store" } },
+    );
     recordMetric("auth.succeeded");
     return response;
   } catch (error) {
@@ -71,29 +62,17 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (securityResponse) return securityResponse;
     if (error instanceof LaunchpadAccessTokenError && error.reason === "invalid") {
       recordMetric("auth.denied", { reason: "invalid_token" });
-      return NextResponse.json(
-        { error: "invalid_token" },
-        { status: 401, headers: { "cache-control": "no-store" } },
-      );
+      return errorResponse("invalid_token", 401);
     }
     if (error instanceof LaunchpadAccessTokenError) {
       recordMetric("auth.platform_error", { reason: error.reason });
-      return NextResponse.json(
-        { error: "platform_unavailable" },
-        { status: 503, headers: { "cache-control": "no-store" } },
-      );
+      return errorResponse("platform_unavailable", 503);
     }
     if (error instanceof AdmissionError) {
       recordMetric("auth.denied", { reason: error.code });
-      return NextResponse.json(
-        { error: error.code },
-        { status: 403, headers: { "cache-control": "no-store" } },
-      );
+      return errorResponse(error.code, 403);
     }
     recordMetric("auth.platform_error");
-    return NextResponse.json(
-      { error: "platform_unavailable" },
-      { status: 503, headers: { "cache-control": "no-store" } },
-    );
+    return errorResponse("platform_unavailable", 503);
   }
 }

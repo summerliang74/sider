@@ -19,7 +19,7 @@ This matrix tracks the implementation against `SHSID-Online-MVP-PRD.md`. “Impl
 | MVP-ENV-01–08 | validated environment contract, TLS enforcement, external adapters and operations runbook | Implemented; provider/network/rotation evidence required |
 | Pages and routes | login, resources, upload, detail, my uploads, reports, audit, auth error, privacy, terms | Implemented |
 | TypeScript requirements | strict TypeScript, Zod boundary validation, Drizzle types, CI commands | Implemented |
-| Data model | two generated Drizzle migrations covering all MVP entities and cleanup state | Implemented |
+| Data model | six generated Drizzle migrations covering the MVP entities, search, cleanup state, and removal of retired local-auth tables | Implemented |
 | Reliability | idempotent completion, fail-closed scanning, health/readiness, cleanup and recovery runbook | Implemented; backup/restore exercise required |
 | Accessibility/compatibility | labels, keyboard-native controls, focus styles, reduced motion, mobile layout | Implemented; browser/WCAG manual audit required |
 

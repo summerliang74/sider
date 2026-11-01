@@ -19,7 +19,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const ip = getClientIp(request);
   try {
     const ipLimit = await enforceIpRateLimit("complete", ip);
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     if (!user) return noStoreJson({ error: "unauthorized" }, { status: 401 });
     const userLimit = await enforceUserRateLimit("complete", user.id);
     const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));

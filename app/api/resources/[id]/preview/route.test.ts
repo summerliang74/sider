@@ -64,6 +64,11 @@ describe("POST /api/resources/[id]/preview", () => {
     const response = await POST(request(), { params: Promise.resolve({ id }) });
 
     expect(response.status).toBe(200);
+    expect(mocks.ipLimit).toHaveBeenCalledBefore(mocks.currentUser);
+    expect(mocks.currentUser).toHaveBeenCalledBefore(mocks.userLimit);
+    expect(mocks.userLimit).toHaveBeenCalledBefore(mocks.challenge);
+    expect(mocks.challenge).toHaveBeenCalledBefore(mocks.resourceRows);
+    expect(mocks.resourceRows).toHaveBeenCalledBefore(mocks.getObjectPreview);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("content-disposition")).toContain("inline");
     expect(response.headers.get("content-type")).toContain("wordprocessingml.document");
@@ -80,6 +85,38 @@ describe("POST /api/resources/[id]/preview", () => {
 
     const response = await POST(request(), { params: Promise.resolve({ id }) });
     expect(response.status).toBe(415);
+    expect(mocks.getObjectPreview).not.toHaveBeenCalled();
+  });
+
+  it("stops before session, resource, and object reads when the IP limiter rejects", async () => {
+    mocks.ipLimit.mockRejectedValue(new Error("ip_limit_unavailable"));
+
+    const response = await POST(request(), { params: Promise.resolve({ id }) });
+
+    expect(response.status).toBe(503);
+    expect(mocks.currentUser).not.toHaveBeenCalled();
+    expect(mocks.resourceRows).not.toHaveBeenCalled();
+    expect(mocks.getObjectPreview).not.toHaveBeenCalled();
+  });
+
+  it("stops before resource and object reads when the user limiter rejects", async () => {
+    mocks.userLimit.mockRejectedValue(new Error("user_limit_unavailable"));
+
+    const response = await POST(request(), { params: Promise.resolve({ id }) });
+
+    expect(response.status).toBe(503);
+    expect(mocks.challenge).not.toHaveBeenCalled();
+    expect(mocks.resourceRows).not.toHaveBeenCalled();
+    expect(mocks.getObjectPreview).not.toHaveBeenCalled();
+  });
+
+  it("stops before resource and object reads when the challenge rejects", async () => {
+    mocks.challenge.mockRejectedValue(new Error("challenge_rejected"));
+
+    const response = await POST(request(), { params: Promise.resolve({ id }) });
+
+    expect(response.status).toBe(503);
+    expect(mocks.resourceRows).not.toHaveBeenCalled();
     expect(mocks.getObjectPreview).not.toHaveBeenCalled();
   });
 });

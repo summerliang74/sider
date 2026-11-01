@@ -3,8 +3,6 @@ if (!baseValue) throw new Error("VERIFY_BASE_URL is required");
 const base = new URL(baseValue);
 if (base.protocol !== "https:") throw new Error("VERIFY_BASE_URL must use HTTPS");
 if (base.pathname !== "/") throw new Error("VERIFY_BASE_URL must be an origin");
-const configuredAuthMode = process.env.SHSID_AUTH_MODE ?? process.env.AUTH_MODE;
-const configuredRegistrationMode = process.env.REGISTRATION_MODE;
 
 const failures = [];
 const passed = [];
@@ -24,21 +22,14 @@ check((await health.json()).status === "ok", "liveness payload");
 
 const login = await request("/login");
 const loginHtml = await login.text();
-const authMode = configuredAuthMode ?? (
-  loginHtml.includes('name="username"') && loginHtml.includes('name="password"')
-    ? "local"
-    : "launchpad"
-);
 check(login.status === 200, "login page");
-check(
-  authMode === "local"
-    ? loginHtml.includes('name="username"') && loginHtml.includes('name="password"')
-    : loginHtml.includes("Continue with Launchpad"),
-  `${authMode} login control`,
-);
+check(loginHtml.includes("Continue with Launchpad"), "Launchpad login control");
 check(login.headers.get("content-security-policy")?.includes("frame-ancestors 'none'"), "content security policy");
 check(login.headers.get("strict-transport-security")?.includes("max-age="), "HSTS");
-check(login.headers.get("x-content-type-options") === "nosniff", "MIME sniffing protection");
+check(
+  login.headers.get("x-content-type-options")?.split(",").some((value) => value.trim() === "nosniff"),
+  "MIME sniffing protection",
+);
 check(login.headers.get("x-frame-options") === "DENY", "frame protection");
 
 const resources = await request("/resources");
@@ -50,27 +41,10 @@ const me = await request("/api/me");
 check(me.status === 401, "unauthenticated API rejection");
 
 const register = await request("/register");
-const registerHtml = await register.text();
-if (authMode === "local") {
-  const registrationMode = configuredRegistrationMode ?? (
-    registerHtml.includes("Registration is currently closed.") ? "closed" : "invite"
-  );
-  check(register.status === 200, "registration page");
-  check(
-    registrationMode === "invite"
-      ? registerHtml.includes('name="inviteCode"') && registerHtml.includes('name="acceptTerms"')
-      : registerHtml.includes("Registration is currently closed."),
-    registrationMode === "invite" ? "invitation registration form" : "closed registration state",
-  );
-} else {
-  check(register.status === 404, "registration hidden outside local auth mode");
-}
+check(register.status === 404, "local registration route absent");
 
-const invitations = await request("/api/admin/registration-invites");
-check(
-  invitations.status === (authMode === "local" ? 401 : 404),
-  "unauthenticated invitation management rejection",
-);
+const localLogin = await request("/api/auth/local", { method: "POST" });
+check(localLogin.status === 404, "local authentication route absent");
 
 const csrf = await request("/api/auth/logout", {
   method: "POST",

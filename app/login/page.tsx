@@ -4,15 +4,16 @@ import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/src/lib/auth/session";
 import { LaunchpadLogin } from "@/src/components/launchpad-login";
-import { LocalLogin } from "@/src/components/local-login";
-import { getServerEnv } from "@/src/lib/env";
 
 export const metadata = { title: "Sign in" };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   if (await getCurrentUser()) redirect("/resources");
-  const localAuth = getServerEnv().AUTH_MODE === "local";
-  const registrationOpen = localAuth && getServerEnv().REGISTRATION_MODE === "invite";
+  const params = await searchParams;
 
   return (
     <main className="auth-page">
@@ -36,8 +37,7 @@ export default async function LoginPage() {
           <p className="eyebrow">WELCOME TO SIDER</p>
           <h2 id="login-title">A shared shelf for student knowledge.</h2>
           <p className="auth-intro">Sign in with your school workspace to browse and share verified resources.</p>
-          {localAuth ? <LocalLogin /> : <LaunchpadLogin />}
-          {registrationOpen ? <p className="auth-switch">Invited to Sider? <Link href="/register">Create account</Link></p> : null}
+          <LaunchpadLogin challengeRequired={params.challenge === "required"} />
           <p className="privacy-note">By continuing, you agree to the student resource <Link href="/terms">policy</Link> and <Link href="/privacy">privacy notice</Link>.</p>
         </div>
       </section>

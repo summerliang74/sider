@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   try {
     const ip = getClientIp(request);
     const ipLimit = await enforceIpRateLimit("search", ip);
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     if (!user) return noStoreJson({ error: "unauthorized" }, { status: 401 });
     const userLimit = await enforceUserRateLimit("search", user.id);
     await verifyBotChallenge({ required: ipLimit.risky || userLimit.risky, token: request.headers.get("x-bot-token") ?? undefined, action: "search", ip });

@@ -1,13 +1,14 @@
 import "server-only";
 
 import { and, eq, gt, isNull } from "drizzle-orm";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { NextResponse } from "next/server";
 
 import { getDatabase } from "@/src/db";
 import { sessions, users } from "@/src/db/schema";
 import { hashOpaqueToken, randomToken } from "@/src/lib/crypto";
 import { getServerEnv } from "@/src/lib/env";
+import { recordMetric } from "@/src/lib/telemetry";
 
 import { sessionCookieName } from "./constants";
 import { resolveIdentityRole } from "./role-policy";
@@ -45,21 +46,24 @@ export function setSessionCookie(response: NextResponse, session: PreparedSessio
     sameSite: "lax",
     path: "/",
     expires: session.expiresAt,
+    maxAge: env.SESSION_TTL_SECONDS,
   });
 }
 
-export async function issueSession(response: NextResponse, userId: string): Promise<void> {
+export async function createSession(userId: string): Promise<PreparedSession> {
   const session = prepareSession();
   await getDatabase().insert(sessions).values({ userId, tokenHash: session.tokenHash, expiresAt: session.expiresAt });
-  setSessionCookie(response, session);
+  return session;
 }
 
-export async function getCurrentUser(): Promise<CurrentUser | null> {
-  const cookieStore = await cookies();
-  const env = getServerEnv();
-  const token = cookieStore.get(sessionCookieName(env.NODE_ENV === "production"))?.value;
-  if (!token) return null;
+export async function issueSession(response: NextResponse, userId: string): Promise<PreparedSession> {
+  const session = await createSession(userId);
+  setSessionCookie(response, session);
+  return session;
+}
 
+async function getUserFromSessionToken(token: string): Promise<CurrentUser | null> {
+  const env = getServerEnv();
   const tokenHash = hashOpaqueToken(token, env.SESSION_TOKEN_PEPPER);
   const [row] = await getDatabase()
     .select({
@@ -83,11 +87,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     )
     .limit(1);
 
-  if (!row) return null;
+  if (!row) {
+    recordMetric("session.lookup_failed");
+    return null;
+  }
   const expectedRole = resolveIdentityRole({
-    authMode: env.AUTH_MODE,
     launchpadSub: row.launchpadSub,
-    localAuthSub: env.localAuthSub,
     adminSubs: env.adminSubs,
   });
   if (row.role !== expectedRole) {
@@ -97,6 +102,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       return null;
     }
   }
+  recordMetric("session.authenticated");
   return {
     id: row.id,
     displayName: row.displayName,
@@ -107,11 +113,34 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   };
 }
 
-export async function revokeCurrentSession(response: NextResponse): Promise<void> {
+function tokenFromHeaders(requestHeaders: Headers): string | undefined {
+  const headerToken = requestHeaders.get("x-sider-session")?.trim();
+  const authorization = requestHeaders.get("authorization") ?? "";
+  const bearerMatch = /^Bearer\s+([^\s]+)$/i.exec(authorization);
+  const bearerToken = bearerMatch?.[1] && bearerMatch[1].length <= 4096 ? bearerMatch[1] : undefined;
+  return headerToken && headerToken.length <= 4096 ? headerToken : bearerToken;
+}
+
+export async function getCurrentUser(request?: Request): Promise<CurrentUser | null> {
+  const cookieStore = await cookies();
+  const env = getServerEnv();
+  const cookieToken = cookieStore.get(sessionCookieName(env.NODE_ENV === "production"))?.value;
+  const requestToken = tokenFromHeaders(request?.headers ?? await headers());
+  const token = cookieToken ?? requestToken;
+  if (!token) {
+    recordMetric("session.credential_missing");
+    return null;
+  }
+  return getUserFromSessionToken(token);
+}
+
+export async function revokeCurrentSession(response: NextResponse, request?: Request): Promise<void> {
   const env = getServerEnv();
   const cookieStore = await cookies();
   const cookieName = sessionCookieName(env.NODE_ENV === "production");
-  const token = cookieStore.get(cookieName)?.value;
+  const cookieToken = cookieStore.get(cookieName)?.value;
+  const requestToken = tokenFromHeaders(request?.headers ?? await headers());
+  const token = cookieToken ?? requestToken;
 
   if (token) {
     const tokenHash = hashOpaqueToken(token, env.SESSION_TOKEN_PEPPER);

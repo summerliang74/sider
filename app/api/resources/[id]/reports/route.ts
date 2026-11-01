@@ -21,7 +21,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const ip = getClientIp(request);
   try {
     const ipLimit = await enforceIpRateLimit("report", ip);
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     if (!user) return noStoreJson({ error: "unauthorized" }, { status: 401 });
     const userLimit = await enforceUserRateLimit("report", user.id);
     const parsed = reportSchema.safeParse(await request.json().catch(() => null));

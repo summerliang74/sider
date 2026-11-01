@@ -58,20 +58,6 @@ export const users = pgTable(
   (table) => [uniqueIndex("users_launchpad_sub_unique").on(table.launchpadSub)],
 );
 
-export const localAccounts = pgTable(
-  "local_accounts",
-  {
-    userId: uuid("user_id")
-      .primaryKey()
-      .references(() => users.id, { onDelete: "cascade" }),
-    username: text("username").notNull(),
-    passwordHash: text("password_hash").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [uniqueIndex("local_accounts_username_unique").on(table.username)],
-);
-
 export const sessions = pgTable(
   "sessions",
   {
@@ -88,28 +74,6 @@ export const sessions = pgTable(
   (table) => [
     uniqueIndex("sessions_token_hash_unique").on(table.tokenHash),
     index("sessions_user_active_idx").on(table.userId, table.expiresAt),
-  ],
-);
-
-export const registrationInvites = pgTable(
-  "registration_invites",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    tokenHash: text("token_hash").notNull(),
-    createdBy: uuid("created_by")
-      .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
-    consumedBy: uuid("consumed_by").references(() => users.id, { onDelete: "restrict" }),
-    note: text("note"),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    consumedAt: timestamp("consumed_at", { withTimezone: true }),
-    revokedAt: timestamp("revoked_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("registration_invites_token_hash_unique").on(table.tokenHash),
-    index("registration_invites_status_expiry_idx").on(table.revokedAt, table.consumedAt, table.expiresAt),
-    index("registration_invites_created_at_idx").on(table.createdAt.desc(), table.id.desc()),
   ],
 );
 

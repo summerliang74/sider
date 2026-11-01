@@ -41,12 +41,6 @@ function request() {
   });
 }
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((next) => { resolve = next; });
-  return { promise, resolve };
-}
-
 describe("POST /api/resources/[id]/download", () => {
   beforeEach(() => {
     mocks.sameOrigin.mockReturnValue(true);
@@ -58,27 +52,49 @@ describe("POST /api/resources/[id]/download", () => {
     mocks.createDownloadUrl.mockResolvedValue({ url: "https://example.test/signed-download", expiresIn: 120 });
   });
 
-  it("starts session validation while the IP limiter is still pending", async () => {
-    const ipLimit = deferred<{ risky: boolean }>();
-    mocks.ipLimit.mockReturnValue(ipLimit.promise);
+  it("stops before session and resource queries when the IP limiter rejects", async () => {
+    mocks.ipLimit.mockRejectedValue(new Error("ip_limit_unavailable"));
 
-    const responsePromise = POST(request(), { params: Promise.resolve({ id }) });
-    await vi.waitFor(() => expect(mocks.currentUser).toHaveBeenCalledOnce());
-    ipLimit.resolve({ risky: false });
+    const response = await POST(request(), { params: Promise.resolve({ id }) });
 
-    expect((await responsePromise).status).toBe(200);
+    expect(response.status).toBe(503);
+    expect(mocks.currentUser).not.toHaveBeenCalled();
+    expect(mocks.userLimit).not.toHaveBeenCalled();
+    expect(mocks.challenge).not.toHaveBeenCalled();
+    expect(mocks.resourceRows).not.toHaveBeenCalled();
+    expect(mocks.createDownloadUrl).not.toHaveBeenCalled();
   });
 
-  it("queries the resource while the user limiter is still pending", async () => {
-    const userLimit = deferred<{ risky: boolean }>();
-    mocks.userLimit.mockReturnValue(userLimit.promise);
+  it("stops before challenge, resource query, and signing when the user limiter rejects", async () => {
+    mocks.userLimit.mockRejectedValue(new Error("user_limit_unavailable"));
 
-    const responsePromise = POST(request(), { params: Promise.resolve({ id }) });
-    await vi.waitFor(() => expect(mocks.resourceRows).toHaveBeenCalledOnce());
-    userLimit.resolve({ risky: false });
+    const response = await POST(request(), { params: Promise.resolve({ id }) });
 
-    const response = await responsePromise;
+    expect(response.status).toBe(503);
+    expect(mocks.challenge).not.toHaveBeenCalled();
+    expect(mocks.resourceRows).not.toHaveBeenCalled();
+    expect(mocks.createDownloadUrl).not.toHaveBeenCalled();
+  });
+
+  it("stops before the resource query and signing when the challenge rejects", async () => {
+    mocks.challenge.mockRejectedValue(new Error("challenge_rejected"));
+
+    const response = await POST(request(), { params: Promise.resolve({ id }) });
+
+    expect(response.status).toBe(503);
+    expect(mocks.resourceRows).not.toHaveBeenCalled();
+    expect(mocks.createDownloadUrl).not.toHaveBeenCalled();
+  });
+
+  it("queries the resource and signs only after all protection checks pass", async () => {
+    const response = await POST(request(), { params: Promise.resolve({ id }) });
+
     expect(response.status).toBe(200);
+    expect(mocks.ipLimit).toHaveBeenCalledBefore(mocks.currentUser);
+    expect(mocks.currentUser).toHaveBeenCalledBefore(mocks.userLimit);
+    expect(mocks.userLimit).toHaveBeenCalledBefore(mocks.challenge);
+    expect(mocks.challenge).toHaveBeenCalledBefore(mocks.resourceRows);
+    expect(mocks.resourceRows).toHaveBeenCalledBefore(mocks.createDownloadUrl);
     await expect(response.json()).resolves.toEqual({ url: "https://example.test/signed-download", expiresIn: 120 });
   });
 });
