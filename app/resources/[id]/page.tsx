@@ -48,7 +48,7 @@ export default async function ResourceDetailPage({
             {resource.status === "active" && previewKind ? <DocumentPreview resourceId={resource.id} filename={resource.originalFilename} kind={previewKind} /> : null}
             <p className="notice"><span aria-hidden="true">●</span>The file is stored privately. Download links are short-lived and available only to verified students.</p>
             {resource.status !== "active" ? <p className="notice">This resource is visible only to its author or an administrator and cannot be downloaded in its current state.</p> : null}
-            <ResourceActions resourceId={resource.id} isOwner={resource.authorId === user.id || user.role === "admin"} canDownload={resource.status === "active"} downloadOrigin={getDownloadOrigin()} initial={{ title: resource.title, description: resource.description, tags: resource.tags }} />
+            <ResourceActions resourceId={resource.id} isOwner={resource.authorId === user.id} isAdmin={user.role === "admin"} canDownload={resource.status === "active"} downloadOrigin={getDownloadOrigin()} initial={{ title: resource.title, description: resource.description, tags: resource.tags }} />
           </article>
           <aside className="resource-context">
             <p className="eyebrow">RESOURCE CONTEXT</p>

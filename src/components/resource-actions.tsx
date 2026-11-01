@@ -6,12 +6,13 @@ import { preconnect } from "react-dom";
 
 import { BotChallenge } from "./bot-challenge";
 
-export function ResourceActions({ resourceId, isOwner, canDownload, downloadOrigin, initial }: { resourceId: string; isOwner: boolean; canDownload: boolean; downloadOrigin: string; initial: { title: string; description: string; tags: string[] } }) {
+export function ResourceActions({ resourceId, isOwner, isAdmin, canDownload, downloadOrigin, initial }: { resourceId: string; isOwner: boolean; isAdmin: boolean; canDownload: boolean; downloadOrigin: string; initial: { title: string; description: string; tags: string[] } }) {
   preconnect(downloadOrigin);
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [editing, setEditing] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [challengeAction, setChallengeAction] = useState<"download" | "report" | null>(null);
   const [botToken, setBotToken] = useState("");
   const moreMenu = useRef<HTMLDetailsElement>(null);
@@ -50,16 +51,32 @@ export function ResourceActions({ resourceId, isOwner, canDownload, downloadOrig
     if (response.ok) { setEditing(false); router.refresh(); }
   }
 
-  async function remove() {
+  async function removeOwnResource() {
     closeMoreMenu();
     if (!window.confirm("Delete this resource? New download links will stop immediately.")) return;
     const response = await fetch(`/api/resources/${resourceId}`, { method: "DELETE" });
     if (response.ok) router.push("/me/resources"); else setMessage("The resource could not be deleted.");
   }
 
+  async function removeAsAdmin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const response = await fetch(`/api/admin/resources/${resourceId}/moderate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "remove", reason: data.get("reason") }),
+    });
+    if (response.ok) {
+      router.push("/resources");
+      return;
+    }
+    setMessage("The resource could not be removed.");
+  }
+
   function toggleEdit() {
     setEditing((current) => !current);
     setReporting(false);
+    setRemoving(false);
     setChallengeAction(null);
   }
 
@@ -67,21 +84,34 @@ export function ResourceActions({ resourceId, isOwner, canDownload, downloadOrig
     closeMoreMenu();
     setReporting((current) => !current);
     setEditing(false);
+    setRemoving(false);
     setChallengeAction(null);
     setBotToken("");
   }
 
+  function openAdminRemoval() {
+    closeMoreMenu();
+    setRemoving(true);
+    setEditing(false);
+    setReporting(false);
+    setChallengeAction(null);
+    setMessage("");
+  }
+
+  const canManage = isOwner || isAdmin;
+
   return <section className="resource-actions" aria-label="Resource actions">
     <div className="action-row">
       {canDownload ? <button className="button primary" type="button" onClick={download}>Download</button> : null}
-      {isOwner ? <button className="button" type="button" aria-expanded={editing} onClick={toggleEdit}>Edit details</button> : null}
+      {canManage ? <button className="button" type="button" aria-expanded={editing} onClick={toggleEdit}>Edit details</button> : null}
       <details className="action-menu" ref={moreMenu}>
         <summary className="button icon-button" aria-label="More resource actions"><span aria-hidden="true">•••</span></summary>
-        <div className="action-menu-popover">{isOwner ? <button className="danger" type="button" onClick={remove}>Delete resource</button> : <button type="button" onClick={openReport}>{reporting ? "Close report form" : "Report resource"}</button>}</div>
+        <div className="action-menu-popover">{isAdmin ? <button className="danger" type="button" onClick={openAdminRemoval}>Remove resource</button> : isOwner ? <button className="danger" type="button" onClick={removeOwnResource}>Delete resource</button> : <button type="button" onClick={openReport}>{reporting ? "Close report form" : "Report resource"}</button>}</div>
       </details>
     </div>
     {challengeAction ? <div className="challenge"><BotChallenge action={challengeAction} onToken={setBotToken} /></div> : null}
     {message ? <p className="action-message" role="status">{message}</p> : null}
+    {removing ? <form className="inline-form destructive-form" onSubmit={removeAsAdmin}><h2>Remove this resource</h2><p>It will disappear immediately. The stored file will be deleted after the configured recovery period, and this action will be recorded in the audit log.</p><label className="field"><span>Reason</span><textarea name="reason" required maxLength={1000} rows={3} placeholder="Explain the policy or safety reason for removal" /></label><div className="action-row"><button className="button danger" type="submit">Remove resource</button><button className="button" type="button" onClick={() => setRemoving(false)}>Cancel</button></div></form> : null}
     {reporting ? <form className="inline-form" onSubmit={report}><label className="field"><span>Reason</span><select name="reason" required><option value="copyright_privacy">Copyright or privacy</option><option value="malware">Malicious file</option><option value="inappropriate">Inappropriate content</option><option value="spam">Spam</option><option value="other">Other</option></select></label><label className="field"><span>Details</span><textarea name="details" maxLength={1000} rows={3} /></label><button className="button" type="submit" disabled={challengeAction === "report" && !botToken}>Submit report</button></form> : null}
     {editing ? <form className="inline-form" onSubmit={save}><label className="field"><span>Title</span><input name="title" defaultValue={initial.title} required maxLength={120} /></label><label className="field"><span>Description</span><textarea name="description" defaultValue={initial.description} maxLength={2000} rows={4} /></label><label className="field"><span>Tags</span><input name="tags" defaultValue={initial.tags.join(", ")} /></label><button className="button" type="submit">Save changes</button></form> : null}
   </section>;

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDatabase } from "@/src/db";
@@ -25,14 +25,19 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!z.uuid().safeParse(id).success) return noStoreJson({ error: "resource_unavailable" }, { status: 404 });
   const targetStatus = parsed.data.action === "hide" ? "hidden" : parsed.data.action === "restore" ? "active" : "deleted";
   const allowedSource = parsed.data.action === "hide" ? "active" : parsed.data.action === "restore" ? "hidden" : undefined;
+  const reason = sanitizeAuditText(parsed.data.reason);
   const result = await getDatabase().transaction(async (tx) => {
-    const condition = allowedSource ? and(eq(resources.id, id), eq(resources.status, allowedSource)) : eq(resources.id, id);
-    const [updated] = await tx.update(resources).set({ status: targetStatus, moderationReason: parsed.data.reason, updatedAt: new Date(), ...(targetStatus === "deleted" ? { deletedAt: new Date() } : {}) }).where(condition).returning({ id: resources.id });
+    const condition = allowedSource
+      ? and(eq(resources.id, id), eq(resources.status, allowedSource))
+      : and(eq(resources.id, id), ne(resources.status, "deleted"), isNull(resources.deletedAt));
+    const [updated] = await tx.update(resources).set({ status: targetStatus, moderationReason: reason, updatedAt: new Date(), ...(targetStatus === "deleted" ? { deletedAt: new Date() } : {}) }).where(condition).returning({ id: resources.id });
     if (!updated) return null;
-    if (parsed.data.reportId) {
-      await tx.update(resourceReports).set({ status: "resolved", handledBy: user.id, handledAt: new Date(), resolutionNote: parsed.data.reason }).where(and(eq(resourceReports.id, parsed.data.reportId), eq(resourceReports.resourceId, id), eq(resourceReports.status, "open")));
+    if (targetStatus === "deleted") {
+      await tx.update(resourceReports).set({ status: "resolved", handledBy: user.id, handledAt: new Date(), resolutionNote: reason }).where(and(eq(resourceReports.resourceId, id), eq(resourceReports.status, "open")));
+    } else if (parsed.data.reportId) {
+      await tx.update(resourceReports).set({ status: "resolved", handledBy: user.id, handledAt: new Date(), resolutionNote: reason }).where(and(eq(resourceReports.id, parsed.data.reportId), eq(resourceReports.resourceId, id), eq(resourceReports.status, "open")));
     }
-    await tx.insert(auditLogs).values({ actorId: user.id, action: `resource.${parsed.data.action}`, targetType: "resource", targetId: id, metadata: { reason: sanitizeAuditText(parsed.data.reason), reportId: parsed.data.reportId ?? null } });
+    await tx.insert(auditLogs).values({ actorId: user.id, action: `resource.${parsed.data.action}`, targetType: "resource", targetId: id, metadata: { reason, reportId: parsed.data.reportId ?? null } });
     return updated;
   });
   if (!result) return noStoreJson({ error: "resource_unavailable" }, { status: 404 });

@@ -181,12 +181,11 @@ export async function updateResourceMetadata(
 }
 
 export async function softDeleteResource(id: string, user: CurrentUser) {
-  const ownerFilter = user.role === "admin" ? eq(resources.id, id) : and(eq(resources.id, id), eq(resources.authorId, user.id));
   return getDatabase().transaction(async (tx) => {
     const [deleted] = await tx
       .update(resources)
       .set({ status: "deleted", deletedAt: new Date(), updatedAt: new Date() })
-      .where(and(ownerFilter, isNull(resources.deletedAt), sql`${resources.status} <> 'deleted'`))
+      .where(and(eq(resources.id, id), eq(resources.authorId, user.id), isNull(resources.deletedAt), sql`${resources.status} <> 'deleted'`))
       .returning({ id: resources.id });
     if (!deleted) return null;
     await tx.insert(auditLogs).values({ actorId: user.id, action: "resource.delete", targetType: "resource", targetId: id, metadata: {} });

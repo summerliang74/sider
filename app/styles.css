@@ -209,6 +209,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .resource-context dt { color: var(--muted); font-size: 11px; line-height: 16px; }
 .resource-context dd { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; line-height: 22px; text-transform: capitalize; }
 .inline-form { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 5px; max-width: 620px; }
+.destructive-form h2 { margin: 14px 0 4px; font-size: 16px; line-height: 24px; }
+.destructive-form > p { margin: 0 0 14px; color: var(--muted); font-size: 12px; line-height: 18px; }
 
 /* Sign in */
 .auth-page { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 820px) minmax(520px, 1fr); background: var(--canvas); }
