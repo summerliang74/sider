@@ -18,9 +18,7 @@ const serverEnvSchema = z
     SESSION_TTL_SECONDS: z.coerce.number().int().positive().max(3600).default(3600),
     DATABASE_URL: z.string().min(1),
     DATABASE_MAX_CONNECTIONS: z.coerce.number().int().min(1).max(20).default(5),
-    SHSID_ALLOWED_ORGS: z.string().min(1),
     SHSID_ADMIN_SUBS: z.string().min(1),
-    SHSID_REQUIRED_CAPABILITY: z.string().optional(),
     SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL: z.union([z.email(), z.literal("disabled")]).default("disabled"),
     SHSID_LAUNCHPAD_OIDC_DEV: z.enum(["0", "1"]),
     S3_ENDPOINT: z.url(),
@@ -86,7 +84,6 @@ const serverEnvSchema = z
       const productionValues: Array<[keyof typeof env, string]> = [
         ["APP_BASE_URL", env.APP_BASE_URL],
         ["DATABASE_URL", env.DATABASE_URL],
-        ["SHSID_ALLOWED_ORGS", env.SHSID_ALLOWED_ORGS],
         ["SHSID_ADMIN_SUBS", env.SHSID_ADMIN_SUBS],
         ["S3_ENDPOINT", env.S3_ENDPOINT],
         ["S3_BUCKET", env.S3_BUCKET],
@@ -126,13 +123,9 @@ const serverEnvSchema = z
   })
   .transform((env) => ({
     ...env,
-    allowedOrgs: env.SHSID_ALLOWED_ORGS.split(",")
-      .map((org) => org.trim())
-      .filter(Boolean),
     adminSubs: env.SHSID_ADMIN_SUBS.split(",")
       .map((sub) => sub.trim())
       .filter(Boolean),
-    requiredCapability: env.SHSID_REQUIRED_CAPABILITY?.trim() || null,
     launchpadOidcDev: env.SHSID_LAUNCHPAD_OIDC_DEV,
     orgDiscoveryEmail: env.SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL === "disabled"
       ? null
@@ -172,10 +165,6 @@ export function getServerEnv(): ServerEnv {
       .join("; ");
     throw new Error(`Invalid server configuration: ${issues}`);
   }
-  if (result.data.allowedOrgs.length === 0) {
-    throw new Error("Invalid server configuration: SHSID_ALLOWED_ORGS contains no values");
-  }
-
   cachedEnv = result.data;
   return cachedEnv;
 }

@@ -12,7 +12,6 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
     SESSION_SECRET=build-only-session-secret-that-is-never-used \
     SESSION_TOKEN_PEPPER=build-only-session-pepper-that-is-never-used \
     DATABASE_URL=postgresql://build:build@database.invalid/app?sslmode=require \
-    SHSID_ALLOWED_ORGS=school \
     SHSID_ADMIN_SUBS=launchpad:admin \
     SHSID_LAUNCHPAD_OIDC_DEV=0 \
     S3_ENDPOINT=https://storage.invalid \

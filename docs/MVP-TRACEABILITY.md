@@ -27,7 +27,7 @@ This matrix tracks the implementation against `SHSID-Online-MVP-PRD.md`. “Impl
 
 The following are the PRD's M0/M4 gates and cannot be honestly marked complete by repository code:
 
-1. Confirm the exact SHSID organization value, administrator subject IDs, and required capability with Launchpad maintainers.
+1. Confirm administrator subject IDs and keep the Launchpad-only-for-SHSID-students boundary documented; restore an additional admission gate before Launchpad admits any external audience.
 2. Supply the UCloud production HTTPS domain and verify the Launchpad bridge, callback, site session transport, DNS, TLS, trusted proxy chain, and egress behavior there.
 3. Provision PostgreSQL, private S3, Redis REST, challenge verification, malware scanning, edge WAF/DDoS, monitoring, and backups.
 4. Apply all committed migrations, remove the retired `oauth_login_transactions` table in a reviewed follow-up migration, and complete an end-to-end upload/scan/search/download test against those services.

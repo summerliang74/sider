@@ -42,7 +42,7 @@ export function AppShell({
         </nav>
         <div className="sidebar-note">
           <strong>Private workspace</strong>
-          <p>Available only to verified SHSID students.</p>
+          <p>Available to SHSID students through Launchpad.</p>
         </div>
         <div className="profile">
           <span className="avatar" aria-hidden="true">{initials || "S"}</span>
@@ -54,7 +54,7 @@ export function AppShell({
         <header className="topbar">
           <Link className="mobile-brand" href="/resources" prefetch={false}><Image src="/figma/sider-mark.svg" alt="" width={28} height={28} aria-hidden="true" /> Sider</Link>
           <div className="breadcrumbs"><span>Workspace</span><span aria-hidden="true">/</span><span>{title ?? (current === "resources" ? "Resources" : current === "peer-advisors" ? "Peer Advisor" : current === "mine" ? "My uploads" : "Reports")}</span></div>
-          <div className="top-meta"><Image src="/figma/verified-dot.svg" alt="" width={8} height={8} aria-hidden="true" /> Private &amp; verified</div>
+          <div className="top-meta"><Image src="/figma/verified-dot.svg" alt="" width={8} height={8} aria-hidden="true" /> Private &amp; SHSID-only</div>
           <nav className="mobile-links" aria-label="Mobile navigation"><Link href="/resources" prefetch={false}>Resources</Link><Link href="/resources?collection=peer-advisors" prefetch={false}>Peer Advisor</Link><Link href="/me/resources" prefetch={false}>My uploads</Link>{user.role === "admin" ? <Link href="/admin/reports" prefetch={false}>Admin</Link> : null}<LogoutButton>Sign out</LogoutButton></nav>
         </header>
         {children}

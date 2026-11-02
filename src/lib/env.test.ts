@@ -10,7 +10,6 @@ const baseEnv: NodeJS.ProcessEnv = {
   SESSION_SECRET: "session-secret-that-is-at-least-32-characters",
   SESSION_TOKEN_PEPPER: "session-pepper-that-is-at-least-32-characters",
   DATABASE_URL: "postgresql://user:password@db.test/app?sslmode=require",
-  SHSID_ALLOWED_ORGS: "school",
   SHSID_ADMIN_SUBS: "launchpad:admin",
   SHSID_LAUNCHPAD_OIDC_DEV: "0",
   S3_ENDPOINT: "https://storage.test",
@@ -39,9 +38,8 @@ describe("server environment", () => {
     resetEnvForTests();
   });
 
-  it("parses Launchpad identity policy", () => {
+  it("parses Launchpad identity settings", () => {
     const env = getServerEnv();
-    expect(env.allowedOrgs).toEqual(["school"]);
     expect(env.adminSubs).toEqual(["launchpad:admin"]);
     expect(env.launchpadOidcDev).toBe("0");
   });
@@ -49,11 +47,5 @@ describe("server environment", () => {
   it("rejects production Launchpad development mode", () => {
     process.env = { ...process.env, NODE_ENV: "production", SHSID_LAUNCHPAD_OIDC_DEV: "1" };
     expect(() => getServerEnv()).toThrow(/SHSID_LAUNCHPAD_OIDC_DEV/);
-  });
-
-  it("requires at least one allowed Launchpad organization", () => {
-    process.env.SHSID_ALLOWED_ORGS = " , ";
-    resetEnvForTests();
-    expect(() => getServerEnv()).toThrow(/contains no values/);
   });
 });

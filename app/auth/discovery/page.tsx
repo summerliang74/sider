@@ -29,7 +29,7 @@ export default async function OrgDiscoveryPage() {
     <main className="auth-page">
       <section className="auth-card" aria-labelledby="discovery-title">
         <div className="monogram large" aria-hidden="true">S</div>
-        <p className="eyebrow">Temporary organization discovery</p>
+        <p className="eyebrow">Temporary identity discovery</p>
         <h1 id="discovery-title">Launchpad identity found</h1>
         <p className="auth-intro">
           This account was not given an application session. Copy the exact values below, then disable discovery and redeploy.
@@ -40,8 +40,8 @@ export default async function OrgDiscoveryPage() {
           <div><dt>Subject</dt><dd><code>{discovery.sub}</code></dd></div>
         </dl>
         <div className="notice">
-          Set <code>SHSID_ALLOWED_ORGS</code> to the organization value. If this account should be an administrator,
-          set <code>SHSID_ADMIN_SUBS</code> to the subject value. Finally set <code>SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL=disabled</code>.
+          If this account should be an administrator, set <code>SHSID_ADMIN_SUBS</code> to the subject value.
+          Finally set <code>SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL=disabled</code>.
         </div>
         <Link className="button login-button" href="/login">Back to sign in</Link>
       </section>

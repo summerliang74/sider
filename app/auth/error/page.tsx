@@ -3,9 +3,6 @@ import Link from "next/link";
 const messages: Record<string, { title: string; detail: string }> = {
   cancelled: { title: "Sign-in was cancelled", detail: "Nothing changed. You can return and try again when you are ready." },
   invalid_state: { title: "This sign-in link is no longer valid", detail: "For your security, sign-in links are short-lived and can only be used once." },
-  not_verified: { title: "A verified account is required", detail: "Launchpad did not mark this account as verified." },
-  org_not_allowed: { title: "This organization is not eligible", detail: "SHSID Online is currently limited to the confirmed SHSID organization." },
-  capability_missing: { title: "Your account needs access", detail: "The required Launchpad capability has not been granted to this account." },
   suspended: { title: "This account is suspended", detail: "Contact an administrator if you believe this is a mistake." },
   platform_unavailable: { title: "Sign-in is temporarily unavailable", detail: "Launchpad could not complete the request. Please try again in a moment." },
 };

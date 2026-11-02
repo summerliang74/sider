@@ -14,7 +14,7 @@ This checklist is derived from the Launchpad Manual pages “Sign in with Launch
 - `.launchpad/deploy.json` contains configuration and environment references, never plaintext credentials. Runtime references are available to `releaseCommand` and the running release.
 - Launchpad does not provide managed PostgreSQL, Redis, or object storage. Apps connect to those services using their own network endpoints and credentials.
 
-The Manual does **not** publish SHSID's exact `org` value, a SHSID-specific capability key, or administrator user subjects. Those values must come from the SHSID/Launchpad administrator or a real `/oauth/userinfo` result.
+Launchpad is restricted to SHSID students, so Sider treats a valid Launchpad identity as the student-membership boundary. Sider records `org`, `verified`, and `allows` for diagnostics but does not repeat those checks at login. Administrator subjects still come from the SHSID/Launchpad administrator or a controlled `/oauth/userinfo` discovery flow.
 
 ## Create Launchpad Variables
 
@@ -24,8 +24,6 @@ Create project variables with these exact reference names:
 APP_BASE_URL
 SESSION_TTL_SECONDS
 DATABASE_MAX_CONNECTIONS
-SHSID_ALLOWED_ORGS
-SHSID_REQUIRED_CAPABILITY
 SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL
 SHSID_LAUNCHPAD_OIDC_DEV
 S3_ENDPOINT
@@ -51,18 +49,17 @@ The `build` and `build:launchpad` scripts normalize `NODE_ENV=production`, disab
 
 For initial domain and Launchpad sign-in verification before the malware scanner is available, set both `MALWARE_SCAN_URL=disabled` and `secret://project/malware-scan-token=disabled`. This mode fails closed: upload-intent and completion endpoints return `503`, and the upload page explains that uploads are unavailable. Configure the real HTTPS scanner endpoint and token before enabling uploads or starting the student beta.
 
-### One-time org/sub discovery
+### One-time administrator subject discovery
 
-When the exact Launchpad organization and subject are not known yet:
+When the exact administrator subject is not known yet:
 
-1. Set `SHSID_ALLOWED_ORGS=__discovery__` so ordinary users remain denied.
-2. Set `secret://project/shsid-admin-subs=__discovery__` until the real administrator subject is known.
-3. Set `SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL` to one exact verified test-account email.
-4. Deploy and sign in with that account. The callback redirects to `/auth/discovery`, which displays the exact `org` and `sub` for five minutes.
-5. Replace `SHSID_ALLOWED_ORGS` with the displayed organization. Put the displayed subject in `secret://project/shsid-admin-subs` if this account should be an administrator.
-6. Set `SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL=disabled` and redeploy.
+1. Set `secret://project/shsid-admin-subs=__discovery__` until the real administrator subject is known.
+2. Set `SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL` to one exact verified test-account email.
+3. Deploy and sign in with that account. The callback redirects to `/auth/discovery`, which displays the exact `org` and `sub` for five minutes.
+4. Put the displayed subject in `secret://project/shsid-admin-subs` if this account should be an administrator.
+5. Set `SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL=disabled` and redeploy.
 
-Discovery does not create a user, persist the profile, or issue an application session. Unverified accounts and every email other than the configured address remain denied.
+Discovery does not create a user, persist the profile, or issue an application session. The temporary discovery route remains limited to the configured verified email; ordinary login does not require Launchpad's optional `verified` flag.
 
 ## Create Launchpad Secrets
 

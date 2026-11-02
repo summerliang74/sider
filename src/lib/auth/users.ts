@@ -5,13 +5,15 @@ import { users } from "@/src/db/schema";
 import { getServerEnv } from "@/src/lib/env";
 
 import type { LaunchpadUser } from "./launchpad";
-import { AdmissionError, assertLaunchpadAdmission } from "./admission";
 
-export { AdmissionError } from "./admission";
+export class AdmissionError extends Error {
+  constructor(public readonly code: "suspended") {
+    super(code);
+  }
+}
 
 export async function admitAndUpsertUser(profile: LaunchpadUser): Promise<string> {
   const env = getServerEnv();
-  assertLaunchpadAdmission(profile, env);
   const role = env.adminSubs.includes(profile.sub) ? "admin" as const : "student" as const;
 
   const [user] = await getDatabase()
@@ -22,7 +24,7 @@ export async function admitAndUpsertUser(profile: LaunchpadUser): Promise<string
       displayName: profile.name ?? profile.email ?? "SHSID student",
       avatarUrl: profile.picture ?? null,
       org: profile.org,
-      verified: true,
+      verified: profile.verified,
       role,
     })
     .onConflictDoUpdate({
@@ -32,7 +34,7 @@ export async function admitAndUpsertUser(profile: LaunchpadUser): Promise<string
         displayName: profile.name ?? profile.email ?? "SHSID student",
         avatarUrl: profile.picture ?? null,
         org: profile.org,
-        verified: true,
+        verified: profile.verified,
         role,
         updatedAt: new Date(),
         lastLoginAt: new Date(),

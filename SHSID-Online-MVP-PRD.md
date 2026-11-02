@@ -8,7 +8,7 @@
 
 ## 1. MVP 定义
 
-SHSID Online MVP 是一个只向通过 Launchpad 验证的 SHSID 学生开放的资源共享平台。学生可以搜索、上传、下载和管理学习资源；管理员可以处理举报、隐藏资源和封禁用户。
+SHSID Online MVP 是一个面向 Launchpad 中 SHSID 学生的资源共享平台。Launchpad 本身是 SHSID 学生身份边界；学生可以搜索、上传、下载和管理学习资源，管理员可以处理举报、隐藏资源和封禁用户。
 
 MVP 不设置固定学科栏目，以搜索为主要发现方式。现有 Peer Advisor 入口是对规范化 `peer advisors` 标签的筛选视图，标签由上传者填写，不代表管理员审核或策展，也不扩展为学科分类树。当前上传由浏览器发送到本站受保护的上传接口，再由 Next.js 流式写入私有 S3 兼容存储；下载通过短时效预签名 URL 由浏览器直接从对象存储获取。上传内容会经过本站、反向代理和服务器网络，不能描述为浏览器直传对象存储。MVP 不提供在线文件预览。
 
@@ -29,7 +29,7 @@ MVP 不设置固定学科栏目，以搜索为主要发现方式。现有 Peer A
 
 ### 2.1 MVP 目标
 
-- 只允许符合组织白名单的已验证学生访问业务功能。
+- 只允许持有有效 Launchpad 身份且未被本站封禁的学生访问业务功能。
 - 用户能在 3 分钟内发布一个合规的资源。
 - 用户能按标题、描述、标签或文件名找到可用资源。
 - 用户只能下载当前仍为 `active` 的资源。
@@ -53,7 +53,7 @@ MVP 不设置固定学科栏目，以搜索为主要发现方式。现有 Peer A
 | 角色 | 权限 |
 |---|---|
 | 未登录访客 | 只可查看登录页、隐私说明、服务条款和错误页 |
-| 已验证学生 | 搜索、查看、下载、上传资源；编辑/删除自己的资源；举报他人资源 |
+| Launchpad 学生 | 搜索、查看、下载、上传资源；编辑/删除自己的资源；举报他人资源 |
 | 管理员 | 拥有学生权限；处理举报；隐藏、恢复或下架资源；封禁用户；查看审计记录 |
 
 ### 3.1 准入条件
@@ -61,10 +61,9 @@ MVP 不设置固定学科栏目，以搜索为主要发现方式。现有 Peer A
 必须同时满足：
 
 - Launchpad `userinfo.sub` 存在；
-- `verified === true`；
-- `org` 命中服务端 SHSID 白名单；
-- 若平台确认需要 capability，`allows` 必须包含对应权限；
 - 本站用户状态为 `active`。
+
+`org`、`verified` 和 `allows` 作为身份快照记录，不作为 MVP 登录阻断条件。该策略基于已确认前提：Launchpad 仅供 SHSID 学生使用；如果平台开放给校外用户，必须在开放前重新引入服务端准入策略。
 
 任一条件失败时不创建本站会话，且不得仅根据邮箱后缀放行。
 
@@ -78,7 +77,7 @@ MVP 不设置固定学科栏目，以搜索为主要发现方式。现有 Peer A
 4. 浏览器顶层跳转至 Launchpad authorize 端点；Launchpad 将一次性 code 返回平台保留的 `/__lp_auth/callback`。
 5. Launchpad SDK 校验 `state` 和 `nonce`，使用原 verifier 交换一次 code，并在 SDK 状态中提供短时效 access token 和用户资料。
 6. 浏览器将 access token 提交到本站同源 `POST /api/auth/launchpad/session`；客户端资料不作为准入依据。
-7. 本站服务端使用 access token 调用 `/oauth/userinfo`，执行组织、验证状态、capability 和本站用户状态校验，创建或更新本站用户。
+7. 本站服务端使用 access token 调用 `/oauth/userinfo`，确认有效 Launchpad 身份、检查本站用户状态，记录身份属性并创建或更新本站用户。
 8. 本站服务端创建随机会话，数据库只保存哈希；响应优先设置 `HttpOnly + Secure + SameSite=Lax` Cookie。
 9. 若部署平台已确认丢弃应用 `Set-Cookie`，会话接口可同时返回一次本站随机 token 及过期时间；登录页将其写入 IndexedDB，由同源 Service Worker 为受保护请求注入 `x-sider-session`，随后立即清除 Launchpad SDK token。
 10. 兼容传输下不得把本站 token 写入 `localStorage`/`sessionStorage`、URL、日志或错误信息；登出必须同时撤销数据库会话并清除 IndexedDB。
@@ -424,7 +423,7 @@ flowchart LR
 ### 12.1 鉴权
 
 - 合法 SHSID 用户能够在 HTTPS 生产域名完成登录。
-- Launchpad SDK 对 `state` 不匹配、nonce 不匹配和 code 重用/过期拒绝登录；本站对 userinfo 401、`verified=false`、org 不允许或 capability 缺失拒绝创建会话。
+- Launchpad SDK 对 `state` 不匹配、nonce 不匹配和 code 重用/过期拒绝登录；本站对 userinfo 401 或已封禁用户拒绝创建会话，并记录 `org`、`verified` 和 `allows` 身份属性。
 - `Secure` 本站 Cookie 能够正常写入和回传；若平台代理确认无法保留 `Set-Cookie`，兼容传输能够在不使用 `localStorage`/`sessionStorage` 的前提下完成登录，且退出后 Cookie、IndexedDB token 和旧数据库会话均不可用。
 - 客户端伪造 user/sub/org/verified/allows 不能绕过服务端 `/oauth/userinfo` 准入；Launchpad access token 不能直接访问业务 API。
 - 生产环境 `SHSID_LAUNCHPAD_OIDC_DEV=0`，未知 origin 不能用 `devOrigin` 绕过。
@@ -484,7 +483,7 @@ flowchart LR
 
 ## 14. M0 阻断项
 
-1. Launchpad 维护者确认 SHSID `org` 精确值、`verified` 含义与是否需要专属 `allows` capability。
+1. **已确认：** Launchpad 仅供 SHSID 学生使用，因此 MVP 不重复使用 `org`、`verified` 或 `allows` 阻断登录；若平台受众变化，必须先恢复服务端准入门槛。
 2. 确认本站会话能否长于 Launchpad 约 1 小时 token，以及允许时的绝对/空闲有效期。
 3. 明确 UCloud 生产 HTTPS 域名、证书、`/dashboard-api/` bridge、SDK 保留 callback 和续期/健康检查责任人。
 4. 在 UCloud 生产域名验证应用 `Set-Cookie` 是否能够持久化；若 bridge/代理链不能可靠保留 Cookie，书面接受 IndexedDB + Service Worker 兼容传输的威胁模型、CSP/XSS 控制、监控和移除条件。

@@ -34,7 +34,7 @@ Q&A 和实时 Communication 在后续阶段实现，不进入第一阶段的开�
 
 ### 3.1 MVP 目标
 
-- 仅允许通过 Launchpad 验证且属于允许组织的用户进入网站；
+- 仅允许持有有效 Launchpad 身份且未被本站封禁的用户进入网站；
 - 用户能够在 3 分钟内完成一次资源发布；
 - 用户能够通过关键词找到相关资源并安全下载；
 - 上传经受保护的 Next.js 接口流式写入私有对象存储；下载使用短时效预签名 URL 直达对象存储；MVP 不提供在线文件预览；
@@ -64,19 +64,18 @@ Q&A 和实时 Communication 在后续阶段实现，不进入第一阶段的开�
 | 角色 | 权限 |
 |---|---|
 | 未登录访客 | 仅查看登录页、隐私说明、服务条款和错误页；不能搜索或下载资源 |
-| 已验证学生 | 搜索、查看、下载、上传资源；编辑或删除自己发布的资源；举报他人资源 |
+| Launchpad 学生 | 搜索、查看、下载、上传资源；编辑或删除自己发布的资源；举报他人资源 |
 | 管理员 | 拥有学生权限；查看举报；隐藏、恢复或下架资源；封禁用户；查看审计记录 |
 
 ### 4.2 身份准入规则
 
-MVP 默认采用封闭社区策略：
+MVP 默认采用封闭社区策略。Launchpad 本身仅供 SHSID 学生使用，因此它是学生身份边界：
 
-- Launchpad `userinfo` 返回 `verified: true`；
-- `org` 必须匹配服务端配置的 SHSID 组织白名单；
+- Launchpad `/oauth/userinfo` 返回有效 `sub`；
 - 本站用户状态必须为 `active`；
 - 以上规则不满足时，拒绝创建本站会话并展示明确但不过度泄露信息的错误说明。
 
-`org` 的实际值、`verified` 的业务含义及是否需要额外的 `allows` capability，必须在 M0 联调中由 Launchpad 维护者确认。在这些值未确认前不得开放正式登录；禁止仅依据邮箱后缀完成鉴权。
+`org`、`verified` 和 `allows` 作为身份快照记录，不作为 MVP 登录阻断条件。若 Launchpad 日后开放给非 SHSID 用户，必须在开放前重新引入服务端组织或 capability 准入门槛；禁止仅依据邮箱后缀完成鉴权。
 
 ## 5. 分阶段范围
 
@@ -165,7 +164,7 @@ Phase 3 开始前必须明确：群聊是公开还是邀请制、消息是否自
 | AUTH-11 | P0 | 在 Launchpad 维护者确认之前，本站会话绝对有效期不超过 1 小时；确认可独立长会话后，再通过配置调整。 |
 | AUTH-12 | P0 | 管理员封禁用户时，必须立即撤销该用户的全部本站会话。 |
 
-Launchpad 官方 SDK 完成 PKCE、保留 callback 和 code 交换。浏览器把 SDK access token 提交给 `POST /api/auth/launchpad/session`；Next.js 服务端调用 `/oauth/userinfo` 重新获取身份并执行组织、验证状态、capability 和本站用户状态校验，再签发本站会话。禁止仅凭客户端上报的用户对象创建账号。
+Launchpad 官方 SDK 完成 PKCE、保留 callback 和 code 交换。浏览器把 SDK access token 提交给 `POST /api/auth/launchpad/session`；Next.js 服务端调用 `/oauth/userinfo` 重新获取身份，确认有效 Launchpad 用户并检查本站封禁状态，记录身份属性后再签发本站会话。禁止仅凭客户端上报的用户对象创建账号。
 
 ### 7.2 Resource Hub 首页与搜索
 
@@ -289,7 +288,7 @@ OAuth 防护边界与执行顺序：
 5. 用户在 Launchpad 登录并同意授权；同意页每次都会出现。
 6. Launchpad 将一次性 code 返回 `/__lp_auth/callback`。
 7. SDK 校验 `state`/`nonce`，使用原 verifier 换取 token；浏览器把短时 access token 提交到本站同源会话接口。
-8. 本站服务端调用 `/oauth/userinfo`，校验 `sub`、`verified`、`org`、capability 和用户封禁状态，创建或更新用户。
+8. 本站服务端调用 `/oauth/userinfo`，校验 `sub` 和用户封禁状态，记录 `org`、`verified`、`allows` 并创建或更新用户。
 9. 本站签发随机服务端会话；首选 HttpOnly Cookie，代理链无法保留 Cookie 时才启用 IndexedDB + Service Worker 兼容传输。
 
 ### 8.2 上传流程
@@ -417,8 +416,7 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 - 确认生产环境 `SHSID_LAUNCHPAD_OIDC_DEV=0`，且客户端提交 `devOrigin` 无法绕过 origin 识别；
 - 确认 `client_id`、redirect URI 和 `/__lp_auth/callback` 一致；
 - 确认 `/dashboard-api/oauth/token` 与 `/oauth/userinfo` 可用；
-- 确认 `org` 的实际 SHSID 值和 `verified` 的业务含义；
-- 确认是否需要为本应用申请专属 `allows` capability；
+- 确认 Launchpad 继续仅向 SHSID 学生开放；若受众变化，先恢复组织或 capability 准入门槛；
 - 确认本站会话是否可长于 Launchpad 约 1 小时的 access token 生命周期；
 - 在自定义域名上遇到 `/dashboard-api/*` 404 时重新 provision vhost；
 - 使用 Launchpad 提供的 `lp oidc <id>` 检查 deployed、integrated 和 registered 状态。
@@ -551,7 +549,7 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 
 - 未登录用户访问业务页会被引导到登录页，原目标路径在登录后恢复；
 - 合法 SHSID 用户能够完成 Launchpad 授权并进入 Resource Hub；
-- SDK 对 `state`/nonce 不匹配、code 重用或过期拒绝登录；本站对 userinfo 401、`verified=false`、org 不允许或 capability 缺失拒绝创建会话；
+- SDK 对 `state`/nonce 不匹配、code 重用或过期拒绝登录；本站对 userinfo 401 或已封禁用户拒绝创建会话，并记录身份属性；
 - 未知生产 origin 调用 bootstrap 时，不以开发模式绕过；
 - 生产域名为 HTTPS，登录后浏览器能够写入并回传 `Secure` 本站会话 Cookie；
 - 生产配置中 `SHSID_LAUNCHPAD_OIDC_DEV=0`；
@@ -616,7 +614,7 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 
 | 里程碑 | 交付内容 | 完成条件 |
 |---|---|---|
-| M0：技术验证 | UCloud HTTPS 生产域名与反向代理；Launchpad bootstrap、SDK callback、userinfo 和本站会话；外部 PostgreSQL、应用中转上传、S3 GET、扫描与清理；边缘/WAF、共享限流和机器人挑战；生产 Secrets 注入与轮换 | 在目标域名完成端到端 spike；确认 `org`/`verified`/`allows`/会话政策、外部服务与凭据责任人；`SHSID_LAUNCHPAD_OIDC_DEV=0`；无关键未知项 |
+| M0：技术验证 | UCloud HTTPS 生产域名与反向代理；Launchpad bootstrap、SDK callback、userinfo 和本站会话；外部 PostgreSQL、应用中转上传、S3 GET、扫描与清理；边缘/WAF、共享限流和机器人挑战；生产 Secrets 注入与轮换 | 在目标域名完成端到端 spike；确认 Launchpad 学生身份边界、会话政策、外部服务与凭据责任人；`SHSID_LAUNCHPAD_OIDC_DEV=0`；无关键未知项 |
 | M1：身份与骨架 | 登录/登出、本站会话、用户表、受保护路由、基础页面 | 鉴权验收用例通过 |
 | M2：Resource Hub | 上传、complete、搜索、详情、下载、我的资源 | 核心资源流程端到端通过 |
 | M3：安全与管理 | 举报、隐藏、封禁、边缘/WAF、共享限流、机器人挑战、审计、清理任务 | 安全与管理验收用例及压力/滥用演练通过 |
@@ -650,7 +648,7 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 
 以下问题必须在指定门槛前确定；其中标记为 M0 阻断的项目未确认时，不得开放学生内测：
 
-1. **M0 阻断：** Launchpad 返回的 SHSID `org` 精确值是什么？`verified` 在本部署中的业务含义是什么？是否还需专属 capability？
+1. **已确认：** Launchpad 仅供 SHSID 学生使用，因此 MVP 不重复使用 `org`、`verified` 或 `allows` 阻断登录；如果平台受众变化，必须先恢复服务端准入门槛。
 2. **M0 阻断：** Launchpad 是否允许本站会话长于其约 1 小时的 access token？允许时，推荐的绝对有效期和空闲有效期是多少？
 3. **M0 阻断：** 生产 HTTPS 域名、证书和 `/dashboard-api/` bridge 由谁配置并负责续期/健康检查？
 4. **M0 阻断：** 边缘 DDoS/WAF、origin 隔离、共享限流存储和机器人挑战分别由谁提供与运维？挑战服务的数据处理和可访问性是否符合学校要求？

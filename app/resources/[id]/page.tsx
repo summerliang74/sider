@@ -42,7 +42,7 @@ export default async function ResourceDetailPage({
               <div><strong>{resource.originalFilename}</strong><small>{resource.mimeType} · {formatBytes(resource.sizeBytes)} · {resource.status === "active" ? "scanned and verified" : resource.status}</small></div>
               <span className={`status ${resource.status}`}>{resource.status === "active" ? "Active" : resource.status}</span>
             </section>
-            <p className="notice"><span aria-hidden="true">●</span>The file is stored privately. Download links are short-lived and available only to verified students.</p>
+            <p className="notice"><span aria-hidden="true">●</span>The file is stored privately. Download links are short-lived and available only to signed-in Launchpad students.</p>
             {resource.status !== "active" ? <p className="notice">This resource is visible only to its author or an administrator and cannot be downloaded in its current state.</p> : null}
             <ResourceActions resourceId={resource.id} isOwner={resource.authorId === user.id} isAdmin={user.role === "admin"} canDownload={resource.status === "active"} downloadOrigin={getDownloadOrigin()} initial={{ title: resource.title, description: resource.description, tags: resource.tags }} />
           </article>
