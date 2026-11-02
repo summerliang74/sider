@@ -172,12 +172,22 @@ export async function updateResourceMetadata(
   metadata: { title: string; description: string; tags: string[] },
 ) {
   const ownerFilter = user.role === "admin" ? eq(resources.id, id) : and(eq(resources.id, id), eq(resources.authorId, user.id));
-  const [updated] = await getDatabase()
-    .update(resources)
-    .set({ ...metadata, tags: normalizeTags(metadata.tags), updatedAt: new Date() })
-    .where(and(ownerFilter, inArray(resources.status, ["pending", "scanning", "active", "hidden", "quarantined", "failed"])))
-    .returning({ id: resources.id, status: resources.status });
-  return updated ?? null;
+  return getDatabase().transaction(async (tx) => {
+    const [updated] = await tx
+      .update(resources)
+      .set({ ...metadata, tags: normalizeTags(metadata.tags), updatedAt: new Date() })
+      .where(and(ownerFilter, inArray(resources.status, ["pending", "scanning", "active", "hidden", "quarantined", "failed"])))
+      .returning({ id: resources.id, status: resources.status });
+    if (!updated) return null;
+    await tx.insert(auditLogs).values({
+      actorId: user.id,
+      action: "resource.metadata_update",
+      targetType: "resource",
+      targetId: id,
+      metadata: { actorRole: user.role, changedFields: "title,description,tags" },
+    });
+    return updated;
+  });
 }
 
 export async function softDeleteResource(id: string, user: CurrentUser) {

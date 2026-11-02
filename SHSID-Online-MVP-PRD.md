@@ -1,20 +1,20 @@
 # SHSID Online MVP 产品需求文档
 
-> 文档状态：Draft v0.4（当前实现基线）
-> 更新日期：2026-11-01
+> 文档状态：Draft v0.5（当前实现基线）
+> 更新日期：2026-11-02
 > 来源：从 `SHSID-Online-PRD.md` Phase 1 提取
-> 产品范围：Launchpad 鉴权 + Resource Hub + 最低必要的安全与管理能力
-> 技术基线：Launchpad 部署的 Next.js App Router + React + TypeScript strict mode 应用，外接 PostgreSQL、私有 S3 兼容对象存储与其他基础服务
+> 产品范围：Launchpad 鉴权 + Resource Hub + Peer Advisor 标签视图 + 最低必要的安全与管理能力
+> 技术基线：UCloud ULHost 自托管的 Next.js App Router + React + TypeScript strict mode 应用，通过受 Launchpad 识别的 HTTPS 域名接入同源 OAuth bridge，外接 PostgreSQL、私有 S3 兼容对象存储与其他基础服务
 
 ## 1. MVP 定义
 
 SHSID Online MVP 是一个只向通过 Launchpad 验证的 SHSID 学生开放的资源共享平台。学生可以搜索、上传、下载和管理学习资源；管理员可以处理举报、隐藏资源和封禁用户。
 
-MVP 不设置固定学科栏目，以搜索为主要发现方式。当前上传由浏览器发送到本站受保护的上传接口，再由 Next.js 流式写入私有 S3 兼容存储；下载通过短时效预签名 URL 由浏览器直接从对象存储获取。上传内容会经过本站、反向代理和服务器网络，不能描述为浏览器直传对象存储。
+MVP 不设置固定学科栏目，以搜索为主要发现方式。现有 Peer Advisor 入口是对规范化 `peer advisors` 标签的筛选视图，标签由上传者填写，不代表管理员审核或策展，也不扩展为学科分类树。当前上传由浏览器发送到本站受保护的上传接口，再由 Next.js 流式写入私有 S3 兼容存储；下载通过短时效预签名 URL 由浏览器直接从对象存储获取。上传内容会经过本站、反向代理和服务器网络，不能描述为浏览器直传对象存储。MVP 不提供在线文件预览。
 
 ### 1.1 已确定决策
 
-- 使用 Launchpad 已识别、已启用 HTTPS 的生产域名。
+- 应用计算层部署在指定 UCloud ULHost；使用 Launchpad 已识别、已启用 HTTPS 且能代理 `/dashboard-api/` 的生产域名。
 - 使用 Launchpad 官方同源 SDK 发起 OIDC Authorization Code + PKCE；SDK 在浏览器会话中管理 verifier、`state`、`nonce` 和保留 callback，本站不并行维护第二套 PKCE 事务。
 - 浏览器只把 SDK 返回的短时效 Launchpad access token 提交到本站同源会话接口；本站必须通过 `/oauth/userinfo` 重新取得身份并执行准入判断，不信任客户端上报的用户对象。
 - 登录成功后签发本站服务端会话，不使用 Launchpad access token 直接作为长期会话。
@@ -22,8 +22,8 @@ MVP 不设置固定学科栏目，以搜索为主要发现方式。当前上传�
 - 生产环境显式设置 `SHSID_LAUNCHPAD_OIDC_DEV=0`。
 - 文件恶意软件扫描为 P0；扫描未通过时禁止发布。
 - 使用边缘 WAF/DDoS 防护、共享应用层限流和风险自适应机器人检查。
-- Launchpad 只承载应用计算层；状态数据和文件分别保存在外部 PostgreSQL 和私有 S3 兼容存储中。
-- 生产密钥使用 Launchpad 环境变量/Secrets 注入；不将真实 `.env`、凭据或连接串提交到仓库。
+- UCloud 只承载应用、反向代理和独立扫描服务；状态数据和文件分别保存在外部 PostgreSQL 和私有 S3 兼容存储中。
+- 生产密钥通过 UCloud 主机上的受限运行环境或容器 Secrets 注入；不将真实 `.env`、凭据或连接串提交到仓库或镜像。
 
 ## 2. 目标与非目标
 
@@ -43,7 +43,9 @@ MVP 不设置固定学科栏目，以搜索为主要发现方式。当前上传�
 - 点赞、收藏、关注、私信、排行榜。
 - 实时群聊、阅后即焚、消息推送。
 - 固定学科栏目或多级分类导航。
+- 管理员策展集合；Peer Advisor 仅为上传者标签筛选视图。
 - 复杂推荐算法、在线协作编辑、文件转码。
+- PDF、Office、文本或图片的在线文件预览。
 - 多文件资源包和压缩包上传。
 
 ## 3. 用户与权限
@@ -129,6 +131,7 @@ MVP 不设置固定学科栏目，以搜索为主要发现方式。当前上传�
 | MVP-SEARCH-05 | P0 | 使用稳定分页/游标，每页默认 20 条，同分结果不重复、不遗漏。 |
 | MVP-SEARCH-06 | P0 | 查询去除首尾空格、限制长度并使用参数化查询。 |
 | MVP-SEARCH-07 | P1 | 使用 PostgreSQL Full Text Search + `pg_trgm` 增加模糊匹配、高亮和文件类型筛选。 |
+| MVP-SEARCH-08 | P0 | `collection=peer-advisors` 仅筛选规范化后等于 `peeradvisors` 的资源标签；界面必须说明这是上传者标签视图，不得声称为管理员策展或固定学科栏目。 |
 
 ### 5.3 上传、扫描与状态
 
@@ -165,6 +168,7 @@ active/hidden/quarantined -> deleted
 | MVP-RESOURCE-04 | P0 | 只有作者或管理员可编辑元数据或删除资源；不允许静默替换已发布文件。 |
 | MVP-RESOURCE-05 | P0 | 删除采用软删除，立即停止签发新下载 URL，对象由后台任务延迟删除。 |
 | MVP-RESOURCE-06 | P0 | 对 deleted、hidden、quarantined 和不存在的资源返回统一不可用响应。 |
+| MVP-RESOURCE-07 | P0 | MVP 不提供在线文件预览；受保护文件只通过短时效预签名 GET URL 下载，应用不得为预览持续中转对象正文。 |
 
 ### 5.5 举报与管理
 
@@ -175,6 +179,7 @@ active/hidden/quarantined -> deleted
 | MVP-MOD-03 | P0 | 管理员可查看队列并隐藏、恢复或下架资源。 |
 | MVP-MOD-04 | P0 | 管理动作记录操作者、时间、对象、动作和原因。 |
 | MVP-MOD-05 | P0 | 被封禁用户不能上传、下载或获得新预签名 URL。 |
+| MVP-MOD-06 | P0 | 资源元数据修改与软删除也写入事务内审计；元数据修改只记录操作者角色和变更字段名，不复制标题、描述、标签正文。 |
 
 ### 5.6 限流、DDoS 防护与机器人检查
 
@@ -217,8 +222,8 @@ OAuth 防护边界与执行顺序：
 
 | ID | 优先级 | 需求 |
 |---|---|---|
-| MVP-ENV-01 | P0 | Launchpad 只部署 Next.js 计算层；PostgreSQL、S3 兼容存储、共享限流、扫描和机器人挑战作为外部服务连接。 |
-| MVP-ENV-02 | P0 | 本地开发只使用未提交的 `.env.local`；生产变量和密钥使用 Launchpad 环境变量/Secrets，不得进入仓库、镜像或构建产物。 |
+| MVP-ENV-01 | P0 | UCloud ULHost 部署 Next.js 计算层、反向代理和独立扫描服务；PostgreSQL、S3 兼容存储、共享限流和机器人挑战作为外部服务连接。 |
+| MVP-ENV-02 | P0 | 本地开发只使用未提交的 `.env.local`；生产变量和密钥使用 UCloud 主机上的受限运行环境或容器 Secrets，不得进入仓库、镜像或构建产物。 |
 | MVP-ENV-03 | P0 | 除可公开的 bot site key 外，密钥不得使用 `NEXT_PUBLIC_`，且只能由服务端模块读取。 |
 | MVP-ENV-04 | P0 | 应用启动时使用 schema 验证环境变量，缺失、错误或占位值导致启动失败。 |
 | MVP-ENV-05 | P0 | PostgreSQL 使用 TLS、最小权限用户和受控连接池；连接上限覆盖计划应用实例但不超过数据库配额。 |
@@ -232,11 +237,15 @@ OAuth 防护边界与执行顺序：
 |---|---|
 | `/login` | 产品说明、Launchpad 登录、隐私/条款、错误提示 |
 | `/resources` | 主搜索框、上传入口、结果/最近资源、分页 |
+| `/resources?collection=peer-advisors` | 按 `peer advisors` 标签筛选的 Peer Advisor 资源视图，不是管理员策展栏目 |
 | `/resources/new` | 单文件选择、元数据、上传/扫描进度、错误恢复 |
 | `/resources/[id]` | 资源元数据、下载、举报、作者编辑/删除 |
 | `/me/resources` | 当前用户的 pending、scanning、active、hidden、quarantined 和 failed 资源 |
 | `/admin/reports` | 举报队列、资源状态、处理动作和原因 |
+| `/admin/audit` | 最近审计事件，仅管理员可见 |
+| `/auth/discovery` | M0 临时展示测试账号的 Launchpad `org` 与 `sub`，不创建用户或会话 |
 | `/auth/error` | 授权取消、组织不允许、验证失败、平台不可用 |
+| `/privacy`、`/terms` | 隐私说明与可接受使用规则 |
 
 移动端优先，最低支持 360 px。主要流程可用键盘完成，表单有可见 label，错误不只依靠颜色传达。
 
@@ -245,11 +254,11 @@ OAuth 防护边界与执行顺序：
 ```mermaid
 flowchart LR
     U[学生浏览器] --> E[CDN / WAF / DDoS 防护]
-    E --> N[Next.js + TypeScript]
+    E --> N[UCloud 上的 Next.js + TypeScript]
     U -->|Launchpad SDK / OIDC 顶层跳转| L[Launchpad]
     U -->|本站上传 PUT| N
     N -->|userinfo / dashboard-api bridge| L
-    V[Launchpad 环境变量 / Secrets] -.-> N
+    V[UCloud 受限环境 / 容器 Secrets] -.-> N
     N --> P[(外部 PostgreSQL)]
     N --> R[(外部共享限流存储)]
     N --> B[外部机器人挑战校验]
@@ -269,12 +278,12 @@ flowchart LR
 ### 7.2 架构原则
 
 - Launchpad 官方 SDK 承担 PKCE、保留 callback 和 code 交换；Next.js Route Handlers 承担 access token 会话交换、`userinfo` 准入、本站会话、业务 API 和管理接口。
-- Launchpad 部署单元只承载应用计算层；持久状态、文件、共享限流和扫描等能力由外部服务提供。
+- UCloud 部署单元承载应用计算层、反向代理和独立扫描容器；持久状态、文件与共享限流等能力使用外部服务。
 - 不使用客户端用户对象作为身份信任边界。
 - 用户文件最终只存在私有对象存储中；上传数据可以流经受保护的反向代理和 Next.js，但不得持久化到应用磁盘。上传路径必须关闭代理请求体缓冲。
 - 鉴权前先完成 IP/总流量粗限流；粗限流通过后才允许会话与用户状态查询，再执行用户/操作级限流。用户限流或机器人挑战拒绝后不得开始资源业务查询、对象存储签名、对象读取或扫描。
 - origin 只信任明确配置的边缘代理链。
-- 本地开发只使用未提交的 `.env.local`；生产密钥、数据库连接串和签名凭据通过 Launchpad 环境变量/Secrets 提供，不进入仓库、镜像或构建产物。
+- 本地开发只使用未提交的 `.env.local`；生产密钥、数据库连接串和签名凭据通过 UCloud 主机上的受限运行环境或容器 Secrets 提供，不进入仓库、镜像或构建产物。
 
 ### 7.3 环境变量合同
 
@@ -322,7 +331,7 @@ flowchart LR
 - `mime_type`、`size_bytes`、`sha256` nullable
 - `status`: `pending | scanning | active | hidden | quarantined | deleted | failed`
 - `moderation_reason` nullable
-- `created_at`、`updated_at`、`published_at`、`deleted_at`
+- `created_at`、`updated_at`、`published_at`、`deleted_at`、`object_deleted_at`
 - 搜索向量及 GIN/GiST 索引
 
 ### `resource_reports`
@@ -337,6 +346,8 @@ flowchart LR
 
 - `id`、`actor_id`、`action`、`target_type`、`target_id`、`metadata`、`created_at`
 - `metadata` 不得包含 token、会话明文、挑战 token 或预签名 URL
+
+遗留说明：数据库迁移中仍存在已停用的 `oauth_login_transactions` 表，仅由清理任务删除过期行；当前 SDK 鉴权路径不读写该表，也不得恢复为第二套 PKCE 状态机。该表应在学生内测前通过单独迁移删除。
 
 ## 9. API 边界
 
@@ -357,7 +368,12 @@ flowchart LR
 | `POST /api/resources/:id/download` | 校验后签发预签名 GET URL |
 | `POST /api/resources/:id/reports` | 举报资源 |
 | `GET /api/admin/reports` | 管理员查看举报 |
+| `POST /api/admin/reports/:id` | 驳回未处理举报并记录原因与审计 |
 | `POST /api/admin/resources/:id/moderate` | 隐藏、恢复或下架 |
+| `POST /api/admin/users/:id/suspend` | 封禁用户并撤销其全部本站会话 |
+| `GET /admin/audit` | 管理员查看最近审计记录 |
+| `POST /api/internal/jobs/cleanup` | 使用独立 cron secret 清理过期资源对象与会话 |
+| `GET /api/health`、`GET /api/internal/ready` | 公共存活检查与受保护就绪检查 |
 
 所有变更接口实施 CSRF/严格同源防护、服务端鉴权、资源级授权、运行时 schema 校验与分层限流。机器人挑战 token 随原请求提交并同步校验，不设置可被重放的独立“验证成功”接口。
 
@@ -366,6 +382,7 @@ flowchart LR
 ### 10.1 安全与隐私
 
 - 生产全站 HTTPS；Cookie 使用 `HttpOnly + Secure + SameSite=Lax`。兼容会话传输只允许随机本站 token 存入 IndexedDB，并由固定路径、同源、版本化 Service Worker 注入专用头；任何同源脚本可读取 IndexedDB 的剩余风险必须进入威胁模型和 CSP/XSS 验收。
+- 不提供在线文件预览，避免应用持续中转私有对象正文；浏览器仅通过受鉴权签发的短时效对象存储 URL 下载。
 - 不公开 bucket、对象或 origin；不在日志中保存敏感凭据。
 - 用户文本按纯文本输出并转义，MVP 资源描述不支持任意 HTML。
 - 采用数据最小化，挑战服务不用于跨站广告跟踪。
@@ -447,7 +464,7 @@ flowchart LR
 
 ### 12.5 外部服务与配置
 
-- Launchpad 应用重启、重新部署或回滚后，外部 PostgreSQL 数据和 S3 对象不丢失。
+- UCloud 应用容器重启、重新部署或回滚后，外部 PostgreSQL 数据和 S3 对象不丢失。
 - 缺失/错误环境变量或占位值导致应用拒绝启动，错误信息不显示密钥值。
 - 仓库、前端 bundle、镜像、构建日志和错误监控中不包含真实生产凭据。
 - 所有外部连接使用 TLS，超时和不可用时的行为符合 fail-closed/降级要求。
@@ -459,7 +476,7 @@ flowchart LR
 
 | 里程碑 | 交付 | 完成门槛 |
 |---|---|---|
-| M0 技术验证 | Launchpad SDK 鉴权、本站会话 Cookie/兼容传输、外部 PostgreSQL、应用中转上传、S3 预签名下载、扫描、WAF、共享限流、机器人挑战、Secrets 注入/轮换 | 所有 M0 阻断项已确认，端到端 spike 通过 |
+| M0 技术验证 | UCloud 生产域名与反向代理、Launchpad SDK 鉴权、本站会话 Cookie/兼容传输、外部 PostgreSQL、应用中转上传、S3 预签名下载、扫描、WAF、共享限流、机器人挑战、Secrets 注入/轮换 | 所有 M0 阻断项已确认，端到端 spike 通过 |
 | M1 身份与工程骨架 | TypeScript strict、schema/migration、登录/登出、会话、受保护路由 | 鉴权与类型检查通过 |
 | M2 Resource Hub | 上传、扫描、搜索、详情、下载、我的资源 | 核心资源流程端到端通过 |
 | M3 安全与管理 | 举报、审核、封禁、限流、挑战、审计、清理 | 安全用例与压力/滥用演练通过 |
@@ -469,14 +486,14 @@ flowchart LR
 
 1. Launchpad 维护者确认 SHSID `org` 精确值、`verified` 含义与是否需要专属 `allows` capability。
 2. 确认本站会话能否长于 Launchpad 约 1 小时 token，以及允许时的绝对/空闲有效期。
-3. 明确生产 HTTPS 域名、证书、`/dashboard-api/` bridge、SDK 保留 callback 和续期/健康检查责任人。
-4. 在目标 Launchpad 部署验证应用 `Set-Cookie` 是否能够持久化；若不能，书面接受 IndexedDB + Service Worker 兼容传输的威胁模型、CSP/XSS 控制、监控和移除条件。
+3. 明确 UCloud 生产 HTTPS 域名、证书、`/dashboard-api/` bridge、SDK 保留 callback 和续期/健康检查责任人。
+4. 在 UCloud 生产域名验证应用 `Set-Cookie` 是否能够持久化；若 bridge/代理链不能可靠保留 Cookie，书面接受 IndexedDB + Service Worker 兼容传输的威胁模型、CSP/XSS 控制、监控和移除条件。
 5. 明确边缘 DDoS/WAF、origin 隔离、共享限流存储与机器人挑战服务及运维责任。
 6. 确认机器人挑战的数据处理、隐私和可访问性符合学校要求。
 7. 确认恶意软件扫描方案、超时、隔离、重试和告警策略。
 8. 确认外部 PostgreSQL、S3、限流、扫描和挑战服务的提供方、运维责任、费用与数据存放区域。
-9. 在 Launchpad 生产环境验证出口网络、DNS、防火墙/允许列表、TLS、延迟和超时行为。
-10. 明确 Launchpad Secrets 的配置权限，以及所有外部凭据的轮换、撤销和泄露响应流程。
+9. 在 UCloud 生产环境验证出口网络、DNS、防火墙/允许列表、TLS、延迟和超时行为。
+10. 明确 UCloud 生产环境与容器 Secrets 的配置权限，以及所有外部凭据的轮换、撤销和泄露响应流程。
 11. 对应用中转上传完成代理请求缓冲检查、50 MB 边界测试、并发测试、超时测试和服务器到对象存储的容量评估；若不能满足目标，恢复预签名 PUT 直传设计。
 
 M0 任一项未完成时，不得开放学生内测。
@@ -496,6 +513,7 @@ M0 任一项未完成时，不得开放学生内测。
 ## 16. 参考资料
 
 - 完整路线图：`SHSID-Online-PRD.md`
+- 文件预览性能评估：`docs/FILE-PREVIEW-IMPACT.md`
 - Launchpad：<https://launchpad.standardcas.org/>
 - Sign in with Launchpad：<https://launchpad.standardcas.org/manual/sign-in-with-launchpad>
 - Launchpad Domains：<https://launchpad.standardcas.org/manual/domains>

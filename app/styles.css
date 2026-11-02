@@ -233,21 +233,6 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .privacy-note { width: 340px; max-width: 100%; margin: 0; color: var(--muted); font-size: 11px; line-height: 16px; }
 .privacy-note a { text-decoration: underline; }
 
-/* Private document previews */
-.document-preview { margin-top: 14px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--paper); overflow: hidden; }
-.preview-toolbar { min-height: 64px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--canvas); border-bottom: 1px solid var(--line); }
-.preview-toolbar > div { min-width: 0; display: grid; gap: 3px; }
-.preview-toolbar strong { font-size: 13px; }
-.preview-toolbar span { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.document-preview > .action-message, .document-preview > .form-error, .document-preview > .challenge { margin: 12px 14px 0; }
-.preview-surface { min-height: 220px; max-height: 75vh; overflow: auto; background: #e8e6e1; }
-.preview-surface iframe { display: block; width: 100%; height: 70vh; min-height: 520px; border: 0; background: white; }
-.preview-surface img { display: block; max-width: 100%; height: auto; margin: 0 auto; background: white; }
-.preview-surface pre { min-height: 220px; margin: 0; padding: 24px; overflow: auto; background: white; color: var(--ink); font: 13px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
-.docx-preview-body { min-width: 720px; padding: 24px; }
-.docx-preview-body .docx-wrapper { padding: 24px !important; background: #e8e6e1 !important; }
-.docx-preview-body .docx-wrapper > section.docx { margin: 0 auto 24px !important; box-shadow: 0 2px 12px rgb(47 45 41 / 12%); }
-
 /* Supporting and admin screens */
 .challenge { border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--paper); padding: 14px; margin: 16px 0; }
 .challenge p { font-size: 12px; margin-top: 0; }
@@ -341,9 +326,6 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   .auth-editorial h1 { font-size: 40px; line-height: 48px; }
   .auth-panel { min-height: 620px; padding: 24px; }
   .auth-card { width: 100%; padding: 32px 24px; }
-  .preview-toolbar { align-items: flex-start; flex-direction: column; }
-  .preview-surface iframe { min-height: 440px; }
-  .docx-preview-body { min-width: 680px; padding: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

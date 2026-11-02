@@ -29,7 +29,6 @@
     "@neon/config": "^1.9.4",
     "@neon/env": "^1.6.5",
     "@smithy/node-http-handler": "4.13.0",
-    "docx-preview": "0.4.1",
     "drizzle-orm": "0.45.4",
     "next": "16.4.3",
     "postgres": "3.4.9",

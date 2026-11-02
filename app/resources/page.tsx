@@ -35,7 +35,7 @@ export default async function ResourcesPage({
       <div className="content">
         <section className="hero">
           {isPeerAdvisorView
-            ? <div className="hero-copy"><p className="eyebrow">PEER ADVISOR LIBRARY</p><h1>Resources for students<br />who support others.</h1><p>A focused collection of guides, references, and materials curated for SHSID Peer Advisors.</p></div>
+            ? <div className="hero-copy"><p className="eyebrow">PEER ADVISOR LIBRARY</p><h1>Resources for students<br />who support others.</h1><p>A focused view of guides, references, and materials tagged for SHSID Peer Advisors.</p></div>
             : <div className="hero-copy"><p className="eyebrow">RESOURCE LIBRARY</p><h1>Find what your classmates<br />found useful.</h1><p>A private library of notes, guides, worksheets, and reference files shared by SHSID students, for SHSID students.</p></div>}
           <Image className="shelf-illustration" src="/figma/shelf-illustration.svg" alt="" width={310} height={150} aria-hidden="true" />
         </section>

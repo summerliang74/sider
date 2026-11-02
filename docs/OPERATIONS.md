@@ -2,18 +2,18 @@
 
 This file turns the PRD's external-service requirements into an operator checklist. It does not contain credentials.
 
-For the exact Launchpad project Variable/Secret references and OAuth/domain commands used by this repository, follow [LAUNCHPAD-SETUP.md](./LAUNCHPAD-SETUP.md).
+For Launchpad OAuth/domain registration and bridge requirements, follow [LAUNCHPAD-SETUP.md](./LAUNCHPAD-SETUP.md). Application deployment and production secrets are managed on the UCloud host, not in a Launchpad application release.
 
 ## Required topology
 
-Internet traffic must terminate at a managed CDN/WAF/DDoS layer. Only that layer may reach the Launchpad application origin. It must overwrite the header named by `TRUSTED_CLIENT_IP_HEADER`; client-supplied forwarding headers must be discarded. The application must not have another publicly reachable origin address.
+Internet traffic must terminate at a managed CDN/WAF/DDoS layer. Only that layer may reach the UCloud application origin. It must overwrite the header named by `TRUSTED_CLIENT_IP_HEADER`; client-supplied forwarding headers must be discarded. The application must not have another publicly reachable origin address.
 
-Launchpad runs only the Next.js compute process. PostgreSQL, private S3-compatible storage, Redis REST, the bot verifier, and malware scanner must survive application deployment and rollback independently.
+The UCloud host runs the reverse proxy, Next.js compute process, and the isolated `sider-scanner` Compose project. PostgreSQL, private S3-compatible storage, Redis REST, and the bot verifier remain external and must survive application deployment and rollback independently. Never modify `/root/.openclaw` as part of Sider operations.
 
 ## PostgreSQL
 
 - Create a least-privilege application role and require TLS (`sslmode=require`, `verify-ca`, or `verify-full`).
-- Set `DATABASE_MAX_CONNECTIONS × maximum Launchpad instances` below the provider connection quota.
+- Set `DATABASE_MAX_CONNECTIONS × maximum UCloud application instances` below the provider connection quota.
 - Run `npm run db:migrate` as a controlled release step before activating the new application version.
 - Enable encrypted automated backups. Before beta, restore a backup into an isolated database and record the recovery time and result.
 
@@ -51,11 +51,11 @@ Deploy the service described in [SCANNER-CONTRACT.md](./SCANNER-CONTRACT.md). Gr
 
 Alert on request rate, WAF blocks, application `429` events, challenge triggered/passed/failed counts, scanner outcomes, PostgreSQL saturation, and external-service latency/errors. Application metrics are emitted as single-line JSON without raw IPs, queries, filenames, emails, tokens, cookies, or signed URLs.
 
-Run an abuse exercise covering forged forwarding headers, state mismatch/replay, repeated callback, upload bursts, forged completion, malicious/MIME-mismatched files, download bursts, duplicate reports, and non-admin moderation calls.
+Run an abuse exercise covering forged forwarding headers, invalid/replayed SDK sessions, repeated access-token exchange, upload bursts, forged completion, malicious/MIME-mismatched files, download bursts, duplicate reports, and non-admin moderation calls.
 
 ## Secrets and rotation
 
-Store all production values in Launchpad Secrets. Only `NEXT_PUBLIC_BOT_SITE_KEY` is public. Give every credential an owner and expiry/rotation date. Rotation is complete only after the new credential works and the old credential is proven unable to access the service.
+Store all production values in a root-readable UCloud runtime environment file or container secret store outside the repository and image. Only `NEXT_PUBLIC_BOT_SITE_KEY` is public. Give every credential an owner and expiry/rotation date. Rotation is complete only after the new credential works and the old credential is proven unable to access the service.
 
 `SHSID_ADMIN_SUBS` is the comma-separated, reviewed allow-list of exact Launchpad subject identifiers for administrators. Changes are enforced on the next authenticated request or successful sign-in. Removing a subject demotes it and revokes its current sessions when it next reaches the application.
 
