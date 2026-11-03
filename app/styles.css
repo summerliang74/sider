@@ -92,7 +92,7 @@ button:active, .button:active, .nav a:active { background-color: var(--active); 
 .searchbox input { min-width: 0; width: 100%; border: 0; background: transparent; outline: 0; padding: 0; font-size: 14px; line-height: 22px; }
 .searchbox input::placeholder { color: var(--muted); opacity: 1; }
 .search-submit { min-width: 80px; }
-.library-controls { display: flex; justify-content: space-between; align-items: center; gap: 16px; border-bottom: 1px solid var(--line); margin-top: 24px; }
+.library-controls { display: flex; justify-content: space-between; align-items: center; gap: 16px; border-bottom: 1px solid var(--line); margin-top: 24px; padding-block: 10px; }
 .collection-tabs { display: flex; align-items: center; gap: 24px; }
 .collection-tabs a { display: inline-flex; align-items: center; min-height: 50px; padding: 10px 2px; border-bottom: 2px solid transparent; color: var(--muted); font-size: 14px; }
 .collection-tabs a:hover { background: var(--hover); text-decoration: none; }
@@ -314,6 +314,8 @@ button:active, .button:active, .nav a:active { background-color: var(--active); 
   .searchbox > img { width: 18px; height: 18px; }
   .search-submit { min-width: 64px; padding-inline: 10px; }
   .library-controls { margin-top: 16px; align-items: center; position: relative; }
+  .library-controls > .file-type-filter { min-width: 0; }
+  .library-controls > .file-type-filter select { max-width: 130px; }
   .collection-tabs { gap: 18px; }
   .collection-tabs a { font-size: 13px; }
   .filter-toggle { display: inline-flex; min-height: 36px; padding: 6px 8px; font-size: 12px; }

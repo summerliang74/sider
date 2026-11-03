@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { canonicalTag } from "./resource-tags";
 
 export const allowedFileTypes = {
   ".pdf": ["application/pdf"],
@@ -41,7 +42,7 @@ export function sanitizeFilename(filename: string): string {
 }
 
 export function normalizeTags(tags: string[]): string[] {
-  const normalized = tags.map((tag) => tag.trim()).filter(Boolean);
+  const normalized = tags.map(canonicalTag).filter(Boolean);
   const unique = new Map<string, string>();
   for (const tag of normalized) {
     const key = tag.toLocaleLowerCase();

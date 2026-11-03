@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/src/lib/auth/session";
 import { getServerEnv } from "@/src/lib/env";
 import { uploadIntentSchema } from "@/src/lib/files";
+import { canAssignTags } from "@/src/lib/resource-tags";
 import { noStoreJson } from "@/src/lib/http";
 import { createUploadIntent } from "@/src/lib/resources-write";
 import { verifyBotChallenge } from "@/src/lib/security/bot";
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
     const parsed = uploadIntentSchema.safeParse(await request.json());
     if (!parsed.success) return noStoreJson({ error: "invalid_upload", issues: parsed.error.issues.map((issue) => ({ path: issue.path, message: issue.message })) }, { status: 400 });
     if (parsed.data.sizeBytes > getServerEnv().UPLOAD_MAX_BYTES) return noStoreJson({ error: "file_too_large" }, { status: 413 });
+    if (!canAssignTags(user.role, parsed.data.tags)) return noStoreJson({ error: "pa_tag_admin_only" }, { status: 403 });
     await verifyBotChallenge({ required: ipLimit.risky || userLimit.risky, token: parsed.data.botToken, action: "upload", ip });
     try {
       return noStoreJson(await createUploadIntent({ user, ...parsed.data }), { status: 201 });

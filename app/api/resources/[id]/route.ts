@@ -1,4 +1,5 @@
 import { resourceMetadataSchema } from "@/src/lib/files";
+import { canAssignTags } from "@/src/lib/resource-tags";
 import { noStoreJson } from "@/src/lib/http";
 import { getResourceForViewer } from "@/src/lib/resources";
 import { softDeleteResource, updateResourceMetadata } from "@/src/lib/resources-write";
@@ -27,6 +28,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const user = authorization.user;
   const parsed = resourceMetadataSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return noStoreJson({ error: "invalid_resource" }, { status: 400 });
+  if (!canAssignTags(user.role, parsed.data.tags)) return noStoreJson({ error: "pa_tag_admin_only" }, { status: 403 });
   const { id } = await context.params;
   if (!z.uuid().safeParse(id).success) return noStoreJson({ error: "resource_unavailable" }, { status: 404 });
   const updated = await updateResourceMetadata(id, user, parsed.data);

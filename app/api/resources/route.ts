@@ -21,6 +21,7 @@ export async function GET(request: Request) {
     const parsed = resourceSearchSchema.safeParse({
       q: url.searchParams.get("q") ?? "",
       fileType: url.searchParams.get("type") ?? undefined,
+      tag: url.searchParams.get("tag") ?? undefined,
       collection: url.searchParams.get("collection") ?? undefined,
       cursor: url.searchParams.get("cursor") ?? undefined,
     });

@@ -13,7 +13,7 @@ SHSID Online 是一个仅面向 SHSID 学生的校内 C2C 社区。学生可以�
 产品分阶段建设。第一阶段只交付可上线验证的 MVP：
 
 1. 使用 Launchpad 完成学生身份登录和访问控制；
-2. 建立无固定学科栏目（无 section）的 Resource Hub，并提供一个基于上传者标签的 Peer Advisor 筛选视图；
+2. 建立无固定学科栏目（无 section）的 Resource Hub，并提供一个统一标签筛选（PA 仅管理员可赋予）；
 3. 允许登录用户搜索、上传、下载和管理自己的资源；
 4. 提供维持学生社区安全所需的最低限度审核与风控能力。
 
@@ -28,7 +28,7 @@ Q&A 和实时 Communication 在后续阶段实现，不进入第一阶段的开�
 - 上传者和下载者之间缺少可信、可追溯的关系；
 - 现有分类体系容易过时，用户常常不知道资料应该放在哪个栏目。
 
-因此，Resource Hub 不设置固定学科栏目，而以统一搜索框作为主要入口。资源标题、描述、标签和文件名参与检索；标签仅作为搜索元数据，不形成强制分类树。Peer Advisor 一级入口是对规范化 `peer advisors` 标签的筛选视图，标签由上传者填写，不代表管理员审核或策展。
+因此，Resource Hub 不设置固定学科栏目，而以统一搜索框作为主要入口。资源标题、描述、标签和文件名参与检索；标签仅作为搜索元数据，不形成强制分类树。PA 与所有资源合并在统一资源库，通过标签筛选；PA 为保留标签，仅管理员可在上传或编辑时赋予，服务端必须拒绝普通用户提交 PA 或其别名。
 
 ## 3. 产品目标与成功指标
 
@@ -86,7 +86,7 @@ MVP 默认采用封闭社区策略。Launchpad 本身仅供 SHSID 学生使用�
 - Launchpad OIDC 登录、登出、会话管理和访问控制；
 - 首次登录时自动创建本站用户；
 - Resource Hub 搜索与结果列表；
-- Peer Advisor 上传者标签筛选视图；
+- 统一资源标签筛选，含管理员专用 PA 标签；
 - 资源详情、上传、下载、编辑和删除；
 - 上传文件恶意软件扫描、失败隔离与超时处理；
 - “我的资源”；
@@ -100,7 +100,7 @@ MVP 默认采用封闭社区策略。Launchpad 本身仅供 SHSID 学生使用�
 - 实时群聊、阅后即焚、消息推送；
 - 复杂推荐算法、积分或排行榜；
 - 固定学科栏目和多级分类导航；
-- 管理员策展集合；Peer Advisor 不是策展栏目；
+- 独立 PA section 或分类入口；PA 仅作为统一资源库中的保留标签。
 - 多文件资源包、在线协作编辑、文件在线转码。
 - PDF、Office、文本或图片的在线文件预览。
 
@@ -178,7 +178,7 @@ Launchpad 官方 SDK 完成 PKCE、保留 callback 和 code 交换。浏览器�
 | SEARCH-06 | P0 | 搜索结果分页或游标加载，每次默认 20 条。 |
 | SEARCH-07 | P0 | 搜索词去除首尾空格并限制长度；必须使用参数化查询。 |
 | SEARCH-08 | P1 | 支持拼写模糊匹配、高亮命中词和文件类型筛选。 |
-| SEARCH-09 | P0 | `collection=peer-advisors` 仅筛选规范化后等于 `peeradvisors` 的资源标签；界面不得声称管理员策展。 |
+| SEARCH-09 | P0 | 统一资源库支持搜索词、文件类型与标签组合筛选；移除独立 PA 入口。PA 标签所有学生可查看，仅 admin 可在上传和编辑时赋予；服务端拒绝普通用户提交 PA、peer advisor(s) 等规范化别名。 |
 
 MVP 建议先使用 PostgreSQL Full Text Search 配合 `pg_trgm`，避免过早引入独立搜索服务。英文课程名和文件名可用加权全文索引；中英文混合、缩写和模糊匹配由 trigram 补充。排名建议为：标题 > 标签 > 文件名 > 描述。
 
@@ -315,7 +315,7 @@ OAuth 防护边界与执行顺序：
 |---|---|
 | `/login` | 产品说明、Launchpad 登录按钮、隐私/条款入口、登录错误提示 |
 | `/resources` | 主搜索框、上传入口、搜索结果或最近资源、分页/加载更多 |
-| `/resources?collection=peer-advisors` | 按上传者 `peer advisors` 标签筛选的视图，不是管理员策展栏目 |
+| `/resources?tag=PA` | 统一资源库按 PA 标签筛选；旧 collection=peer-advisors 链接兼容映射至 PA，不显示独立栏目 |
 | `/resources/new` | 文件选择、标题、描述、标签、上传进度和错误恢复 |
 | `/resources/[id]` | 资源元数据、下载、举报；作者可编辑/删除 |
 | `/me/resources` | 当前用户上传的 pending、scanning、active、hidden、quarantined、failed 和 deleted 资源；保留各状态原义，提供 All / Active / Scanning / Unavailable 筛选，Scanning 筛选包含 pending |
@@ -566,7 +566,7 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 - hidden、deleted、pending、quarantined 资源不会出现在搜索结果中；
 - 空结果页面允许用户修改搜索或进入上传页；
 - 同分结果排序稳定，分页不会无故重复或漏项。
-- Peer Advisor 视图只返回带规范化 `peeradvisors` 标签的 active 资源，并明确说明其为上传者标签筛选而非管理员策展。
+- 标签筛选只返回匹配的 active 资源；PA 与其他标签共同展示。普通用户上传和编辑赋予 PA 或其别名返回 403，管理员可以赋予；普通用户可上传其他标签资源。
 
 ### 15.3 上传与下载
 

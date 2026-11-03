@@ -8,6 +8,7 @@ import { getDatabase } from "@/src/db";
 import { auditLogs, resources } from "@/src/db/schema";
 import type { CurrentUser } from "@/src/lib/auth/session";
 import { normalizeTags, sanitizeFilename, uploadedObjectMatches, validateDeclaredFile, validateDetectedFile } from "@/src/lib/files";
+import { canAssignTags } from "@/src/lib/resource-tags";
 import { scanObject } from "@/src/lib/scanner";
 import { deleteObject, headObject, moveObject, uploadObject } from "@/src/lib/storage";
 import { recordMetric } from "@/src/lib/telemetry";
@@ -21,6 +22,7 @@ export async function createUploadIntent(input: {
   sizeBytes: number;
   mimeType: string;
 }) {
+  if (!canAssignTags(input.user.role, input.tags)) throw new Error("pa_tag_admin_only");
   const id = randomUUID();
   const filename = sanitizeFilename(input.originalFilename);
   if (!validateDeclaredFile(filename, input.mimeType)) throw new Error("file_type_not_allowed");
@@ -171,6 +173,7 @@ export async function updateResourceMetadata(
   user: CurrentUser,
   metadata: { title: string; description: string; tags: string[] },
 ) {
+  if (!canAssignTags(user.role, metadata.tags)) throw new Error("pa_tag_admin_only");
   const ownerFilter = user.role === "admin" ? eq(resources.id, id) : and(eq(resources.id, id), eq(resources.authorId, user.id));
   return getDatabase().transaction(async (tx) => {
     const [updated] = await tx

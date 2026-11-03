@@ -3,11 +3,12 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { TagPicker } from "./tag-picker";
 import { BotChallenge } from "./bot-challenge";
 
 type Stage = "idle" | "preparing" | "uploading" | "scanning" | "done" | "error";
 
-export function UploadForm() {
+export function UploadForm({ isAdmin = false }: { isAdmin?: boolean }) {
   const router = useRouter();
   const [stage, setStage] = useState<Stage>("idle");
   const [message, setMessage] = useState("");
@@ -125,7 +126,7 @@ export function UploadForm() {
   return <form className="upload-form" onSubmit={submit} aria-busy={busy}>
     <label className="field"><span>Title</span><input name="title" required minLength={1} maxLength={120} placeholder="Enter a clear resource title" /><small>Keep it specific and easy to scan.</small></label>
     <label className="field"><span>Description</span><textarea name="description" maxLength={2000} rows={5} placeholder="Describe what this resource covers" /><small>A short summary helps classmates judge relevance.</small></label>
-    <label className="field"><span>Tags</span><input name="tags" maxLength={309} placeholder="calculus, revision, grade 11" /><small>Up to 10 tags, separated by commas.</small></label>
+    <TagPicker isAdmin={isAdmin} />
     <label className="field file-field"><span>FILE</span><span className={`dropzone${selectedFile ? " selected" : ""}`}><strong>{selectedFile ? selectedFile.name : "Drop a file here, or choose from your device"}</strong><small>{selectedFile ? `${formatBytes(selectedFile.size)} · choose another file to replace it` : "PDF, Office, text, PNG or JPEG · up to 50 MB"}</small><input name="file" type="file" required accept=".pdf,.docx,.pptx,.xlsx,.txt,.png,.jpg,.jpeg" onChange={(event) => setSelectedFile(event.currentTarget.files?.[0] ?? null)} /></span></label>
     {challengeAction ? <div className="challenge"><p>Please complete this check to continue.</p><BotChallenge action={challengeAction} onToken={(token) => { setBotToken(token); if (challengeAction === "complete" && pendingCompleteId && token) void finishComplete(pendingCompleteId, token); }} /></div> : null}
     {message ? <p className="form-error" role="alert">{message}</p> : null}
@@ -141,6 +142,7 @@ function formatBytes(bytes: number): string {
 
 function readableError(error?: string): string {
   const messages: Record<string, string> = {
+    pa_tag_admin_only: "Only administrators can assign the PA tag.",
     file_too_large: "This file is larger than the allowed limit.",
     file_type_not_allowed: "This file type is not allowed.",
     bot_challenge_required: "Additional verification is required because this request looks unusual.",

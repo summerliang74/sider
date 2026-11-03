@@ -6,7 +6,8 @@ import { SearchHub, type SerializedResourceListItem } from "@/src/components/sea
 import { getCurrentUser } from "@/src/lib/auth/session";
 import { loginUrl } from "@/src/lib/auth/return-to";
 import { isResourceCollection, isResourceFileType } from "@/src/lib/resource-search";
-import { listActiveResources } from "@/src/lib/resources";
+import { listActiveResources, listResourceTags } from "@/src/lib/resources";
+import { canonicalTag } from "@/src/lib/resource-tags";
 
 export const metadata = { title: "Resources" };
 
@@ -21,9 +22,10 @@ export default async function ResourcesPage({
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 120) : "";
   const fileType = isResourceFileType(params.type) ? params.type : undefined;
   const collection = isResourceCollection(params.collection) ? params.collection : undefined;
-  const isPeerAdvisorView = collection === "peer-advisors";
+  const tag = typeof params.tag === "string" ? canonicalTag(params.tag.trim().slice(0, 30)) || undefined : collection ? "PA" : undefined;
+  const tagOptions = await listResourceTags();
   const initialResult = !query && !fileType
-    ? await listActiveResources({ q: "", collection })
+    ? await listActiveResources({ q: "", tag })
     : undefined;
   const initialItems: SerializedResourceListItem[] | undefined = initialResult?.items.map((item) => ({
     ...item,
@@ -31,20 +33,20 @@ export default async function ResourcesPage({
   }));
 
   return (
-    <AppShell user={user} current={isPeerAdvisorView ? "peer-advisors" : "resources"}>
+    <AppShell user={user} current="resources">
       <div className="content">
         <section className="page-heading">
           <div>
-            <h1>{isPeerAdvisorView ? "Peer Advisor resources" : "Resource library"}</h1>
-            {isPeerAdvisorView ? <small className="muted">Tagged “peer advisors” by uploaders.</small> : null}
+            <h1>Resources</h1>
           </div>
           <Link className="button primary" href="/resources/new" prefetch={false}><span aria-hidden="true">＋</span> Upload resource</Link>
         </section>
         <SearchHub
-          key={JSON.stringify([collection, query, fileType])}
+          key={JSON.stringify([tag, query, fileType])}
           initialQuery={query}
           initialFileType={fileType}
-          initialCollection={collection}
+          initialTag={tag}
+          tagOptions={tagOptions}
           initialItems={initialItems}
           initialNextCursor={initialResult?.nextCursor}
         />

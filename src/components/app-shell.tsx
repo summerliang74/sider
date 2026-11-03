@@ -11,7 +11,7 @@ export function AppShell({
   children,
 }: {
   user: CurrentUser;
-  current: "resources" | "peer-advisors" | "mine" | "admin";
+  current: "resources" | "mine" | "admin";
   title?: string;
   children: React.ReactNode;
 }) {
@@ -34,10 +34,6 @@ export function AppShell({
             <Link className={current === "resources" ? "selected" : undefined} aria-current={current === "resources" ? "page" : undefined} href="/resources" prefetch={false}><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>Resources</span></Link>
             <Link className={current === "mine" ? "selected" : undefined} aria-current={current === "mine" ? "page" : undefined} href="/me/resources" prefetch={false}><span className="nav-upload-mark" aria-hidden="true">↑</span><span>My uploads</span></Link>
           </div>
-          <div className="nav-section nav-section-separated">
-            <p className="nav-section-label">Peer support</p>
-            <Link className={current === "peer-advisors" ? "selected" : undefined} aria-current={current === "peer-advisors" ? "page" : undefined} href="/resources?collection=peer-advisors" prefetch={false}><span className="nav-pa-mark" aria-hidden="true">PA</span><span>Peer Advisor</span></Link>
-          </div>
           {user.role === "admin" ? <div className="nav-section nav-section-separated"><p className="nav-section-label">ADMINISTRATION</p><Link className={current === "admin" ? "selected" : undefined} href="/admin/reports" prefetch={false}>⚑ <span>Reports</span></Link><Link href="/admin/audit" prefetch={false}>☷ <span>Audit log</span></Link></div> : null}
         </nav>
         <div className="profile">
@@ -49,12 +45,11 @@ export function AppShell({
       <main className="main" id="main-content" tabIndex={-1}>
         <header className="topbar">
           <Link className="mobile-brand" href="/resources" prefetch={false}><Image src="/figma/sider-mark.svg" alt="" width={28} height={28} aria-hidden="true" /> Sider</Link>
-          <div className="breadcrumbs"><span>Workspace</span><span aria-hidden="true">/</span><span>{title ?? (current === "resources" ? "Resources" : current === "peer-advisors" ? "Peer Advisor" : current === "mine" ? "My uploads" : "Reports")}</span></div>
+          <div className="breadcrumbs"><span>Workspace</span><span aria-hidden="true">/</span><span>{title ?? (current === "resources" ? "Resources" : current === "mine" ? "My uploads" : "Reports")}</span></div>
           <details className="mobile-menu">
             <summary className="button">Menu <span aria-hidden="true">☰</span></summary>
             <nav className="mobile-links" aria-label="Mobile navigation">
               <Link aria-current={current === "resources" ? "page" : undefined} href="/resources" prefetch={false}>Resources</Link>
-              <Link aria-current={current === "peer-advisors" ? "page" : undefined} href="/resources?collection=peer-advisors" prefetch={false}>Peer Advisor</Link>
               <Link aria-current={current === "mine" ? "page" : undefined} href="/me/resources" prefetch={false}>My uploads</Link>
               {user.role === "admin" ? <><Link href="/admin/reports" prefetch={false}>Reports</Link><Link href="/admin/audit" prefetch={false}>Audit log</Link></> : null}
               <LogoutButton>Sign out</LogoutButton>

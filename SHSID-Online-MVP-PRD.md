@@ -3,14 +3,14 @@
 > 文档状态：Draft v0.5（当前实现基线）
 > 更新日期：2026-11-02
 > 来源：从 `SHSID-Online-PRD.md` Phase 1 提取
-> 产品范围：Launchpad 鉴权 + Resource Hub + Peer Advisor 标签视图 + 最低必要的安全与管理能力
+> 产品范围：Launchpad 鉴权 + Resource Hub + 统一标签筛选（含管理员专用 PA 标签） + 最低必要的安全与管理能力
 > 技术基线：Launchpad 托管的 Next.js App Router + React + TypeScript strict mode 应用及 HTTPS 生产域名，通过同源 OAuth bridge 鉴权；UCloud ULHost 只运行独立恶意软件扫描服务，另接 PostgreSQL、私有 S3 兼容对象存储与其他基础服务
 
 ## 1. MVP 定义
 
 SHSID Online MVP 是一个面向 Launchpad 中 SHSID 学生的资源共享平台。Launchpad 本身是 SHSID 学生身份边界；学生可以搜索、上传、下载和管理学习资源，管理员可以处理举报、隐藏资源和封禁用户。
 
-MVP 不设置固定学科栏目，以搜索为主要发现方式。现有 Peer Advisor 入口是对规范化 `peer advisors` 标签的筛选视图，标签由上传者填写，不代表管理员审核或策展，也不扩展为学科分类树。当前上传由浏览器发送到本站受保护的上传接口，再由 Next.js 流式写入私有 S3 兼容存储；下载通过短时效预签名 URL 由浏览器直接从对象存储获取。上传内容会经过本站、反向代理和服务器网络，不能描述为浏览器直传对象存储。MVP 不提供在线文件预览。
+MVP 不设置固定学科栏目，以搜索为主要发现方式。PA 与所有资源合并在统一资源库，通过标签筛选；PA 为保留标签，仅管理员可在上传或编辑时赋予，服务端必须拒绝普通用户提交 PA 或其别名。当前上传由浏览器发送到本站受保护的上传接口，再由 Next.js 流式写入私有 S3 兼容存储；下载通过短时效预签名 URL 由浏览器直接从对象存储获取。上传内容会经过本站、反向代理和服务器网络，不能描述为浏览器直传对象存储。MVP 不提供在线文件预览。
 
 ### 1.1 已确定决策
 
@@ -43,7 +43,7 @@ MVP 不设置固定学科栏目，以搜索为主要发现方式。现有 Peer A
 - 点赞、收藏、关注、私信、排行榜。
 - 实时群聊、阅后即焚、消息推送。
 - 固定学科栏目或多级分类导航。
-- 管理员策展集合；Peer Advisor 仅为上传者标签筛选视图。
+- 独立 PA section 或分类入口；PA 仅作为统一资源库中的保留标签。
 - 复杂推荐算法、在线协作编辑、文件转码。
 - PDF、Office、文本或图片的在线文件预览。
 - 多文件资源包和压缩包上传。
@@ -130,7 +130,7 @@ MVP 不设置固定学科栏目，以搜索为主要发现方式。现有 Peer A
 | MVP-SEARCH-05 | P0 | 使用稳定分页/游标，每页默认 20 条，同分结果不重复、不遗漏。 |
 | MVP-SEARCH-06 | P0 | 查询去除首尾空格、限制长度并使用参数化查询。 |
 | MVP-SEARCH-07 | P1 | 使用 PostgreSQL Full Text Search + `pg_trgm` 增加模糊匹配、高亮和文件类型筛选。 |
-| MVP-SEARCH-08 | P0 | `collection=peer-advisors` 仅筛选规范化后等于 `peeradvisors` 的资源标签；界面必须说明这是上传者标签视图，不得声称为管理员策展或固定学科栏目。 |
+| MVP-SEARCH-08 | P0 | 统一资源库支持搜索词、文件类型与标签组合筛选；移除独立 PA 入口。PA 标签所有学生可查看，仅 admin 可在上传和编辑时赋予；服务端拒绝普通用户提交 PA、peer advisor(s) 等规范化别名。 |
 
 ### 5.3 上传、扫描与状态
 
@@ -236,7 +236,7 @@ OAuth 防护边界与执行顺序：
 |---|---|
 | `/login` | 产品说明、Launchpad 登录、隐私/条款、错误提示 |
 | `/resources` | 主搜索框、上传入口、结果/最近资源、分页 |
-| `/resources?collection=peer-advisors` | 按 `peer advisors` 标签筛选的 Peer Advisor 资源视图，不是管理员策展栏目 |
+| `/resources?tag=PA` | 统一资源库按 PA 标签筛选；旧 collection=peer-advisors 链接兼容映射至 PA，不显示独立栏目 |
 | `/resources/new` | 单文件选择、元数据、上传/扫描进度、错误恢复 |
 | `/resources/[id]` | 资源元数据、下载、举报、作者编辑/删除 |
 | `/me/resources` | 当前用户上传的 pending、scanning、active、hidden、quarantined、failed 和 deleted 资源；保留各状态原义，提供 All / Active / Scanning / Unavailable 筛选，Scanning 筛选包含 pending |

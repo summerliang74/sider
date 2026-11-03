@@ -1,39 +1,40 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
 
 import type { ResourceListItem } from "@/src/lib/resources";
 import {
   resourceFileTypeLabels,
   resourceFileTypes,
-  type ResourceCollection,
   type ResourceFileType,
 } from "@/src/lib/resource-search";
 import { BotChallenge } from "./bot-challenge";
 import { ResourceList } from "./resource-list";
 
 export type SerializedResourceListItem = Omit<ResourceListItem, "publishedAt"> & { publishedAt: string };
-type PendingSearch = { query: string; fileType?: ResourceFileType; collection?: ResourceCollection; cursor?: string };
+type PendingSearch = { query: string; fileType?: ResourceFileType; tag?: string; cursor?: string };
 
 export function SearchHub({
   initialQuery,
   initialFileType,
-  initialCollection,
+  initialTag,
   initialItems,
+  tagOptions,
   initialNextCursor,
 }: {
   initialQuery: string;
   initialFileType?: ResourceFileType;
-  initialCollection?: ResourceCollection;
+  initialTag?: string;
+  tagOptions: string[];
   initialItems?: SerializedResourceListItem[];
   initialNextCursor?: string | null;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [draftQuery, setDraftQuery] = useState(initialQuery);
   const [fileType, setFileType] = useState<ResourceFileType | undefined>(initialFileType);
-  const collection = initialCollection;
+  const [tag, setTag] = useState(initialTag);
+  const availableTags = tag && !tagOptions.includes(tag) ? [...tagOptions, tag] : tagOptions;
   const [items, setItems] = useState<ResourceListItem[]>(() => (initialItems ?? []).map((item) => ({
     ...item,
     publishedAt: new Date(item.publishedAt),
@@ -48,7 +49,7 @@ export function SearchHub({
   const load = useCallback(async (
     targetQuery: string,
     targetFileType?: ResourceFileType,
-    targetCollection?: ResourceCollection,
+    targetTag?: string,
     cursor?: string,
     botToken?: string,
   ) => {
@@ -65,7 +66,7 @@ export function SearchHub({
     const params = new URLSearchParams();
     if (targetQuery) params.set("q", targetQuery);
     if (targetFileType) params.set("type", targetFileType);
-    if (targetCollection) params.set("collection", targetCollection);
+    if (targetTag) params.set("tag", targetTag);
     if (cursor) params.set("cursor", cursor);
     try {
       const response = await fetch(`/api/resources?${params.toString()}`, {
@@ -76,7 +77,7 @@ export function SearchHub({
       const result = await response.json() as { items?: SerializedResourceListItem[]; nextCursor?: string | null; error?: string };
       if (controller.signal.aborted) return;
       if (result.error === "bot_challenge_required") {
-        setPending({ query: targetQuery, fileType: targetFileType, collection: targetCollection, cursor });
+        setPending({ query: targetQuery, fileType: targetFileType, tag: targetTag, cursor });
         setError("Please complete the traffic check to continue searching.");
         return;
       }
@@ -98,15 +99,15 @@ export function SearchHub({
 
   useEffect(() => {
     if (initialItems !== undefined) return;
-    const timer = window.setTimeout(() => void load(initialQuery, initialFileType, initialCollection), 0);
+    const timer = window.setTimeout(() => void load(initialQuery, initialFileType, initialTag), 0);
     return () => window.clearTimeout(timer);
-  }, [initialCollection, initialFileType, initialItems, initialQuery, load]);
+  }, [initialTag, initialFileType, initialItems, initialQuery, load]);
 
-  function replaceSearchUrl(targetQuery: string, targetFileType?: ResourceFileType, targetCollection?: ResourceCollection) {
+  function replaceSearchUrl(targetQuery: string, targetFileType?: ResourceFileType, targetTag?: string) {
     const params = new URLSearchParams();
     if (targetQuery) params.set("q", targetQuery);
     if (targetFileType) params.set("type", targetFileType);
-    if (targetCollection) params.set("collection", targetCollection);
+    if (targetTag) params.set("tag", targetTag);
     const search = params.toString();
     window.history.replaceState(null, "", search ? `/resources?${search}` : "/resources");
   }
@@ -117,61 +118,50 @@ export function SearchHub({
     const nextQuery = String(form.get("q") ?? "").trim().slice(0, 120);
     setQuery(nextQuery);
     setDraftQuery(nextQuery);
-    replaceSearchUrl(nextQuery, fileType, collection);
-    void load(nextQuery, fileType, collection);
+    replaceSearchUrl(nextQuery, fileType, tag);
+    void load(nextQuery, fileType, tag);
   }
 
   function changeFileType(nextFileType: ResourceFileType | undefined) {
     setFileType(nextFileType);
-    replaceSearchUrl(query, nextFileType, collection);
-    void load(query, nextFileType, collection);
+    replaceSearchUrl(query, nextFileType, tag);
+    void load(query, nextFileType, tag);
   }
 
   function clearSearch() {
     setQuery("");
     setDraftQuery("");
     setFileType(undefined);
-    replaceSearchUrl("", undefined, collection);
-    void load("", undefined, collection);
+    setTag(undefined);
+    replaceSearchUrl("", undefined, undefined);
+    void load("", undefined, undefined);
   }
 
-  function collectionHref(targetCollection?: ResourceCollection) {
-    const params = new URLSearchParams();
-    if (query) params.set("q", query);
-    if (fileType) params.set("type", fileType);
-    if (targetCollection) params.set("collection", targetCollection);
-    return params.size ? `/resources?${params}` : "/resources";
+  function changeTag(nextTag?: string) {
+    setTag(nextTag);
+    replaceSearchUrl(query, fileType, nextTag);
+    void load(query, fileType, nextTag);
   }
 
-  const emptyTitle = query || fileType
-    ? "No matching resources"
-    : collection === "peer-advisors"
-      ? "No Peer Advisor resources yet"
-      : "No resources yet";
-  const emptyMessage = query || fileType
-    ? "Try a shorter search, another file type, or different wording."
-    : collection === "peer-advisors"
-      ? "Resources tagged for Peer Advisors will appear in this view."
-      : "The first scanned resource will appear here after it is published.";
+  const emptyTitle = query || fileType || tag ? "No matching resources" : "No resources yet";
+  const emptyMessage = query || fileType || tag ? "Try another search, tag, or file type." : "The first scanned resource will appear here after it is published.";
 
   return <>
     <form className="searchbox" onSubmit={submit} role="search" aria-label="Search the resource library">
       <Image src="/figma/search.svg" alt="" width={20} height={20} aria-hidden="true" />
       <label className="sr-only" htmlFor="resource-search">Search resources</label>
-      <input id="resource-search" name="q" value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} maxLength={120} placeholder={collection === "peer-advisors" ? "Search Peer Advisor resources…" : "Search notes, guides, and more…"} autoComplete="off" />
+      <input id="resource-search" name="q" value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} maxLength={120} placeholder="Search resources…" autoComplete="off" />
       <button className="button search-submit" type="submit" disabled={loading}>{loading ? "Searching…" : "Search"}</button>
     </form>
     <div className="library-controls">
-      <nav className="collection-tabs" aria-label="Resource collections">
-        <Link href={collectionHref()} aria-current={!collection ? "page" : undefined} prefetch={false}>All resources</Link>
-        <Link href={collectionHref("peer-advisors")} aria-current={collection === "peer-advisors" ? "page" : undefined} prefetch={false}>Peer Advisor</Link>
-      </nav>
+      <label className="file-type-filter"><span>Tag</span><select value={tag ?? ""} onChange={(event) => changeTag(event.target.value || undefined)}><option value="">All tags</option>{availableTags.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
       <div className={`library-filters${filtersOpen ? " expanded" : ""}`}>
         <button className="button filter-toggle" type="button" aria-expanded={filtersOpen} aria-controls="file-type-options" onClick={() => setFiltersOpen((open) => !open)}>File type{fileType ? " · 1" : ""}<span aria-hidden="true">⌄</span></button>
         <label className="file-type-filter" id="file-type-options"><span>File type</span><select value={fileType ?? ""} onChange={(event) => changeFileType(event.target.value ? event.target.value as ResourceFileType : undefined)}><option value="">All file types</option>{resourceFileTypes.map((type) => <option key={type} value={type}>{resourceFileTypeLabels[type]}</option>)}</select></label>
       </div>
     </div>
-    {query || fileType ? <div className="active-filters" aria-label="Applied search filters">
+    {query || fileType || tag ? <div className="active-filters" aria-label="Applied search filters">
+      {tag ? <button className="filter-chip" type="button" onClick={() => changeTag(undefined)}>{tag} ×</button> : null}
       {query ? <span className="filter-chip">Search · {query}</span> : null}
       {fileType ? <button className="filter-chip" type="button" onClick={() => changeFileType(undefined)} aria-label={`Remove ${resourceFileTypeLabels[fileType]} filter`}>{resourceFileTypeLabels[fileType]} <span aria-hidden="true">×</span></button> : null}
       <button className="clear-filters" type="button" onClick={clearSearch}>Clear all</button>
@@ -180,7 +170,7 @@ export function SearchHub({
       <h2>{query ? "Search results" : "Latest resources"}</h2>
       <span className="results-summary" role="status">{loading ? "Updating…" : error ? "Search unavailable" : `${items.length}${nextCursor ? "+" : ""} ${items.length === 1 ? "resource" : "resources"}`}<span aria-hidden="true"> · </span>{query ? "By relevance" : "Newest first"}</span>
     </div>
-    {pending ? <div className="challenge"><p>{error}</p><BotChallenge action="search" onToken={(token) => { if (token) void load(pending.query, pending.fileType, pending.collection, pending.cursor, token); }} /></div> : null}
+    {pending ? <div className="challenge"><p>{error}</p><BotChallenge action="search" onToken={(token) => { if (token) void load(pending.query, pending.fileType, pending.tag, pending.cursor, token); }} /></div> : null}
     {!pending && error ? <p className="form-error" role="alert">{error}</p> : null}
     <div className="search-results" aria-busy={loading}>
       {items.length > 0 ? (
@@ -195,7 +185,7 @@ export function SearchHub({
         <ResourceList items={items} emptyTitle={emptyTitle} emptyMessage={emptyMessage} />
       )}
     </div>
-    {!pending && error ? <button className="button" type="button" disabled={loading} onClick={() => void load(query, fileType, collection)}>Try again</button> : null}
-    {nextCursor && !error ? <div className="pagination"><button className="button" type="button" disabled={loading} onClick={() => void load(query, fileType, collection, nextCursor)}>{loading ? "Loading…" : "Load more resources"}</button></div> : null}
+    {!pending && error ? <button className="button" type="button" disabled={loading} onClick={() => void load(query, fileType, tag)}>Try again</button> : null}
+    {nextCursor && !error ? <div className="pagination"><button className="button" type="button" disabled={loading} onClick={() => void load(query, fileType, tag, nextCursor)}>{loading ? "Loading…" : "Load more resources"}</button></div> : null}
   </>;
 }

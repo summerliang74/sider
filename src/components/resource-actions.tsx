@@ -4,6 +4,7 @@ import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { preconnect } from "react-dom";
 
+import { TagPicker } from "./tag-picker";
 import { BotChallenge } from "./bot-challenge";
 
 export function ResourceActions({ resourceId, isOwner, isAdmin, canDownload, downloadOrigin, initial }: { resourceId: string; isOwner: boolean; isAdmin: boolean; canDownload: boolean; downloadOrigin: string; initial: { title: string; description: string; tags: string[] } }) {
@@ -47,7 +48,7 @@ export function ResourceActions({ resourceId, isOwner, isAdmin, canDownload, dow
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const response = await fetch(`/api/resources/${resourceId}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ title: data.get("title"), description: data.get("description"), tags: String(data.get("tags") ?? "").split(",").map((tag) => tag.trim()).filter(Boolean) }) });
-    setMessage(response.ok ? "Resource details updated." : "The changes could not be saved.");
+    setMessage(response.ok ? "Resource details updated." : response.status === 403 ? "Only administrators can assign the PA tag." : "The changes could not be saved.");
     if (response.ok) { setEditing(false); router.refresh(); }
   }
 
@@ -113,6 +114,6 @@ export function ResourceActions({ resourceId, isOwner, isAdmin, canDownload, dow
     {message ? <p className="action-message" role="status">{message}</p> : null}
     {removing ? <form className="inline-form destructive-form" onSubmit={removeAsAdmin}><h2>Remove this resource</h2><p>It will disappear immediately. The stored file will be deleted after the configured recovery period, and this action will be recorded in the audit log.</p><label className="field"><span>Reason</span><textarea name="reason" required maxLength={1000} rows={3} placeholder="Explain the policy or safety reason for removal" /></label><div className="action-row"><button className="button danger" type="submit">Remove resource</button><button className="button" type="button" onClick={() => setRemoving(false)}>Cancel</button></div></form> : null}
     {reporting ? <form className="inline-form" onSubmit={report}><label className="field"><span>Reason</span><select name="reason" required><option value="copyright_privacy">Copyright or privacy</option><option value="malware">Malicious file</option><option value="inappropriate">Inappropriate content</option><option value="spam">Spam</option><option value="other">Other</option></select></label><label className="field"><span>Details</span><textarea name="details" maxLength={1000} rows={3} /></label><button className="button" type="submit" disabled={challengeAction === "report" && !botToken}>Submit report</button></form> : null}
-    {editing ? <form className="inline-form" onSubmit={save}><label className="field"><span>Title</span><input name="title" defaultValue={initial.title} required maxLength={120} /></label><label className="field"><span>Description</span><textarea name="description" defaultValue={initial.description} maxLength={2000} rows={4} /></label><label className="field"><span>Tags</span><input name="tags" defaultValue={initial.tags.join(", ")} /></label><button className="button" type="submit">Save changes</button></form> : null}
+    {editing ? <form className="inline-form" onSubmit={save}><label className="field"><span>Title</span><input name="title" defaultValue={initial.title} required maxLength={120} /></label><label className="field"><span>Description</span><textarea name="description" defaultValue={initial.description} maxLength={2000} rows={4} /></label><TagPicker isAdmin={isAdmin} initialTags={initial.tags} /><button className="button" type="submit">Save changes</button></form> : null}
   </section>;
 }

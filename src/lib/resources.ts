@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { getDatabase } from "@/src/db";
 import { resources, users } from "@/src/db/schema";
+import { canonicalTag, isPaTag, suggestedTags } from "@/src/lib/resource-tags";
 import { decodeResourceCursor, encodeResourceCursor } from "@/src/lib/resource-cursor";
 import {
   resourceFileTypeMimeTypes,
@@ -16,6 +17,22 @@ import {
 import type { CurrentUser } from "@/src/lib/auth/session";
 
 const PAGE_SIZE = 20;
+export async function listResourceTags(): Promise<string[]> {
+  const result = await getDatabase().execute(sql`
+    select distinct lower(trim(tag.value)) as tag
+    from ${resources}, unnest(${resources.tags}) as tag(value)
+    where ${resources.status} = 'active' and trim(tag.value) <> ''
+    order by tag limit 500
+  `);
+  const tags = new Map<string, string>(suggestedTags.map((tag) => [tag.toLowerCase(), tag]));
+  for (const row of result) {
+    if (typeof row.tag === "string") {
+      const tag = canonicalTag(row.tag);
+      if (!tags.has(tag.toLowerCase())) tags.set(tag.toLowerCase(), tag);
+    }
+  }
+  return [...tags.values()];
+}
 const HEADLINE_START = "\uE000";
 const HEADLINE_END = "\uE001";
 
@@ -23,6 +40,7 @@ export const resourceSearchSchema = z.object({
   q: z.string().trim().max(120).default(""),
   fileType: z.enum(resourceFileTypes).optional(),
   collection: z.enum(resourceCollections).optional(),
+  tag: z.string().trim().min(1).max(30).optional(),
   cursor: z.string().max(1000).optional(),
 });
 
@@ -93,6 +111,7 @@ export async function listActiveResources(input: {
   q: string;
   fileType?: ResourceFileType;
   collection?: ResourceCollection;
+  tag?: string;
   cursor?: string;
 }): Promise<{ items: ResourceListItem[]; nextCursor: string | null }> {
   const q = input.q.trim().slice(0, 120);
@@ -132,12 +151,15 @@ export async function listActiveResources(input: {
   if (input.fileType) {
     filters.push(eq(resources.mimeType, resourceFileTypeMimeTypes[input.fileType]));
   }
-  if (input.collection === "peer-advisors") {
+  const tag = input.tag ?? (input.collection === "peer-advisors" ? "PA" : undefined);
+  if (tag && isPaTag(tag)) {
     filters.push(sql<boolean>`exists (
       select 1
       from unnest(${resources.tags}) as resource_tag(value)
-      where regexp_replace(lower(trim(resource_tag.value)), '[^a-z0-9]+', '', 'g') = 'peeradvisors'
+      where regexp_replace(lower(trim(normalize(resource_tag.value, NFKC))), '[^a-z0-9]+', '', 'g') in ('pa', 'peeradvisor', 'peeradvisors')
     )`);
+  } else if (tag) {
+    filters.push(sql<boolean>`exists (select 1 from unnest(${resources.tags}) as resource_tag(value) where lower(trim(resource_tag.value)) = lower(${tag}))`);
   }
   if (q) {
     filters.push(

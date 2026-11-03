@@ -90,4 +90,16 @@ describe("GET /api/resources", () => {
     expect(response.status).toBe(400);
     expect(mocks.list).not.toHaveBeenCalled();
   });
+
+  it("combines a tag with text search and file type", async () => {
+    const response = await GET(new Request("https://app.school.test/api/resources?q=guide&type=pdf&tag=PA"));
+    expect(response.status).toBe(200);
+    expect(mocks.list).toHaveBeenCalledWith(expect.objectContaining({ q: "guide", fileType: "pdf", tag: "PA" }));
+  });
+
+  it("rejects oversized tag filters", async () => {
+    const response = await GET(new Request("https://app.school.test/api/resources?tag=" + "x".repeat(31)));
+    expect(response.status).toBe(400);
+    expect(mocks.list).not.toHaveBeenCalled();
+  });
 });

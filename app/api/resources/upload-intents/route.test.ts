@@ -78,4 +78,18 @@ describe("POST /api/resources/upload-intents", () => {
     expect(mocks.bot).toHaveBeenCalledBefore(mocks.createIntent);
     expect(await response.json()).toMatchObject({ resourceId: user.id, expiresIn: 300 });
   });
+
+  it.each(["PA", "peer advisors", "ＰＡ"])("rejects student assignment of %s before creating an intent", async (tag) => {
+    const response = await POST(uploadRequest({ ...validBody, tags: [tag] }));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "pa_tag_admin_only" });
+    expect(mocks.createIntent).not.toHaveBeenCalled();
+  });
+
+  it("allows an administrator to upload PA resources", async () => {
+    mocks.currentUser.mockResolvedValue({ ...user, role: "admin" });
+    const response = await POST(uploadRequest({ ...validBody, tags: ["PA"] }));
+    expect(response.status).toBe(201);
+    expect(mocks.createIntent).toHaveBeenCalled();
+  });
 });
