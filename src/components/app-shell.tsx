@@ -23,20 +23,21 @@ export function AppShell({
     .toUpperCase();
   return (
     <div className="shell">
+      <a className="skip-link" href="#main-content">Skip to content</a>
       <aside className="sidebar">
         <Link href="/resources" className="brand" prefetch={false}>
           <Image src="/figma/sider-mark.svg" alt="" width={28} height={28} aria-hidden="true" />
           <span>Sider</span>
         </Link>
-        <p className="workspace-label">STUDENT RESOURCE HUB</p>
+        <p className="workspace-label">SHSID student workspace</p>
         <nav className="nav" aria-label="Primary navigation">
           <div className="nav-section">
-            <Link className={current === "resources" ? "selected" : undefined} href="/resources" prefetch={false}><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>Resources</span></Link>
-            <Link className={current === "mine" ? "selected" : undefined} href="/me/resources" prefetch={false}><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>My uploads</span></Link>
+            <Link className={current === "resources" ? "selected" : undefined} aria-current={current === "resources" ? "page" : undefined} href="/resources" prefetch={false}><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>Resources</span></Link>
+            <Link className={current === "mine" ? "selected" : undefined} aria-current={current === "mine" ? "page" : undefined} href="/me/resources" prefetch={false}><span className="nav-upload-mark" aria-hidden="true">↑</span><span>My uploads</span></Link>
           </div>
           <div className="nav-section nav-section-separated">
-            <p className="nav-section-label">PEER SUPPORT</p>
-            <Link className={current === "peer-advisors" ? "selected" : undefined} href="/resources?collection=peer-advisors" prefetch={false}><span className="nav-pa-mark" aria-hidden="true">PA</span><span>Peer Advisor</span></Link>
+            <p className="nav-section-label">Peer support</p>
+            <Link className={current === "peer-advisors" ? "selected" : undefined} aria-current={current === "peer-advisors" ? "page" : undefined} href="/resources?collection=peer-advisors" prefetch={false}><span className="nav-pa-mark" aria-hidden="true">PA</span><span>Peer Advisor</span></Link>
           </div>
           {user.role === "admin" ? <div className="nav-section nav-section-separated"><p className="nav-section-label">ADMINISTRATION</p><Link className={current === "admin" ? "selected" : undefined} href="/admin/reports" prefetch={false}>⚑ <span>Reports</span></Link><Link href="/admin/audit" prefetch={false}>☷ <span>Audit log</span></Link></div> : null}
         </nav>
@@ -50,12 +51,21 @@ export function AppShell({
           <LogoutButton ariaLabel="Sign out" title="Sign out">↪</LogoutButton>
         </div>
       </aside>
-      <main className="main">
+      <main className="main" id="main-content" tabIndex={-1}>
         <header className="topbar">
           <Link className="mobile-brand" href="/resources" prefetch={false}><Image src="/figma/sider-mark.svg" alt="" width={28} height={28} aria-hidden="true" /> Sider</Link>
           <div className="breadcrumbs"><span>Workspace</span><span aria-hidden="true">/</span><span>{title ?? (current === "resources" ? "Resources" : current === "peer-advisors" ? "Peer Advisor" : current === "mine" ? "My uploads" : "Reports")}</span></div>
           <div className="top-meta"><Image src="/figma/verified-dot.svg" alt="" width={8} height={8} aria-hidden="true" /> Private &amp; SHSID-only</div>
-          <nav className="mobile-links" aria-label="Mobile navigation"><Link href="/resources" prefetch={false}>Resources</Link><Link href="/resources?collection=peer-advisors" prefetch={false}>Peer Advisor</Link><Link href="/me/resources" prefetch={false}>My uploads</Link>{user.role === "admin" ? <Link href="/admin/reports" prefetch={false}>Admin</Link> : null}<LogoutButton>Sign out</LogoutButton></nav>
+          <details className="mobile-menu">
+            <summary className="button">Menu <span aria-hidden="true">☰</span></summary>
+            <nav className="mobile-links" aria-label="Mobile navigation">
+              <Link aria-current={current === "resources" ? "page" : undefined} href="/resources" prefetch={false}>Resources</Link>
+              <Link aria-current={current === "peer-advisors" ? "page" : undefined} href="/resources?collection=peer-advisors" prefetch={false}>Peer Advisor</Link>
+              <Link aria-current={current === "mine" ? "page" : undefined} href="/me/resources" prefetch={false}>My uploads</Link>
+              {user.role === "admin" ? <><Link href="/admin/reports" prefetch={false}>Reports</Link><Link href="/admin/audit" prefetch={false}>Audit log</Link></> : null}
+              <LogoutButton>Sign out</LogoutButton>
+            </nav>
+          </details>
         </header>
         {children}
       </main>

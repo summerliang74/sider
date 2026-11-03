@@ -44,16 +44,21 @@ export function ResourceList({
   return (
     <div className="resource-list">
       {items.map((resource) => (
-        <Link className="resource-row" href={`/resources/${resource.id}?source=search`} prefetch={false} key={resource.id} aria-label={`Open ${resource.title}`}>
+        <Link className="resource-row group" href={`/resources/${resource.id}?source=search`} prefetch={false} key={resource.id}>
+          <span className="row-handle" aria-hidden="true">⋮⋮</span>
           <span className="file-icon" aria-hidden="true">{fileLabel(resource.mimeType, resource.originalFilename)}</span>
           <div className="row-main">
             <strong className="resource-title"><HighlightedText segments={resource.highlights?.title} fallback={resource.title} /></strong>
             <p className="resource-description"><HighlightedText segments={resource.highlights?.description} fallback={resource.description || resource.originalFilename} /></p>
+            <div className="row-meta">
+              <span className="row-author">{resource.authorName}</span>
+              <span aria-hidden="true">·</span>
+              <time className="row-date" dateTime={resource.publishedAt.toISOString()}>{resource.publishedAt.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })}</time>
+              <span aria-hidden="true">·</span>
+              <span className="row-size">{formatBytes(resource.sizeBytes)}</span>
+            </div>
           </div>
-          <span className="row-author">{resource.authorName}</span>
-          <time className="row-date" dateTime={resource.publishedAt.toISOString()}>{resource.publishedAt.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })}</time>
-          <span className="tag">{resource.tags[0] ?? "Resource"}</span>
-          <span className="row-size">{formatBytes(resource.sizeBytes)}</span>
+          <span className="row-trailing"><span className="tag">{resource.tags[0] ?? "Resource"}</span><span className="row-arrow" aria-hidden="true">↗</span></span>
         </Link>
       ))}
     </div>

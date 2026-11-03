@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/src/components/app-shell";
@@ -33,14 +32,15 @@ export default async function ResourcesPage({
   return (
     <AppShell user={user} current={isPeerAdvisorView ? "peer-advisors" : "resources"}>
       <div className="content">
-        <section className="hero">
-          {isPeerAdvisorView
-            ? <div className="hero-copy"><p className="eyebrow">PEER ADVISOR LIBRARY</p><h1>Resources for students<br />who support others.</h1><p>A focused view of guides, references, and materials tagged for SHSID Peer Advisors.</p></div>
-            : <div className="hero-copy"><p className="eyebrow">RESOURCE LIBRARY</p><h1>Find what your classmates<br />found useful.</h1><p>A private library of notes, guides, worksheets, and reference files shared by SHSID students, for SHSID students.</p></div>}
-          <Image className="shelf-illustration" src="/figma/shelf-illustration.svg" alt="" width={310} height={150} aria-hidden="true" />
+        <section className="page-heading">
+          <div>
+            <h1>{isPeerAdvisorView ? "Peer Advisor resources" : "Resource library"}</h1>
+            <p>{isPeerAdvisorView ? "Guides and references for students who support others." : "Notes, guides, and useful files. Shared by your SHSID classmates."}</p>
+          </div>
+          <Link className="button primary" href="/resources/new" prefetch={false}><span aria-hidden="true">＋</span> Upload resource</Link>
         </section>
         <SearchHub
-          key={collection ?? "all-resources"}
+          key={JSON.stringify([collection, query, fileType])}
           initialQuery={query}
           initialFileType={fileType}
           initialCollection={collection}

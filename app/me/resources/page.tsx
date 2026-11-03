@@ -53,9 +53,8 @@ export default async function MyResourcesPage({
   return (
     <AppShell user={user} current="mine">
       <div className="content uploads-page">
-        <section className="uploads-hero">
+        <section className="page-heading">
           <div>
-            <p className="eyebrow">YOUR WORK</p>
             <h1>My uploads</h1>
             <p>Track everything you have shared, including files that are still scanning or unavailable to classmates.</p>
           </div>
@@ -74,7 +73,7 @@ export default async function MyResourcesPage({
             <div className="upload-table-head" aria-hidden="true"><span /><span>Name</span><span>Uploaded</span><span>Status</span></div>
             {visibleItems.length === 0 ? <div className="empty compact"><h2>No {filter} uploads</h2><p>Choose another status to see the rest of your resources.</p></div> : <div className="upload-list">
               {visibleItems.map((item) => (
-                <article className="upload-row" key={item.id}>
+                <article className="upload-row group" key={item.id}>
                   <span className="file-icon" aria-hidden="true">{fileLabel(item.filename)}</span>
                   <div className="upload-copy"><strong>{item.status !== "deleted" ? <Link href={`/resources/${item.id}`}>{item.title}</Link> : item.title}</strong><small>{item.filename}</small></div>
                   <time dateTime={item.createdAt.toISOString()}>{item.createdAt.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })}</time>
