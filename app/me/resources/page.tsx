@@ -6,6 +6,7 @@ import { AppShell } from "@/src/components/app-shell";
 import { getDatabase } from "@/src/db";
 import { resources } from "@/src/db/schema";
 import { getCurrentUser } from "@/src/lib/auth/session";
+import { loginUrl } from "@/src/lib/auth/return-to";
 
 function fileLabel(filename: string): string {
   const extension = filename.split(".").pop()?.toUpperCase();
@@ -13,7 +14,7 @@ function fileLabel(filename: string): string {
 }
 
 function statusLabel(status: string): string {
-  return status === "active" ? "Active" : status === "scanning" || status === "pending" ? "Scanning" : "Failed";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 const uploadFilters = ["all", "active", "scanning", "unavailable"] as const;
@@ -36,8 +37,8 @@ export default async function MyResourcesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
   const params = await searchParams;
+  if (!user) redirect(loginUrl("/me/resources", params));
   const filter: UploadFilter = isUploadFilter(params.status) ? params.status : "all";
   const items = await getDatabase()
     .select({ id: resources.id, title: resources.title, filename: resources.originalFilename, status: resources.status, createdAt: resources.createdAt })

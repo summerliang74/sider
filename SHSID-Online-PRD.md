@@ -3,8 +3,8 @@
 > 文档状态：Draft v0.6（与 MVP 当前实现同步）
 > 更新日期：2026-11-02
 > 第一阶段：Resource Hub + Launchpad 登录/鉴权  
-> 技术基线：UCloud ULHost 自托管 Next.js + React + TypeScript 应用，通过 Launchpad 已识别的 HTTPS 域名和同源 `/dashboard-api/` bridge 鉴权，外接 PostgreSQL、私有 S3 兼容对象存储、共享限流存储、独立扫描服务与边缘 WAF/DDoS 防护
-> 已选定方案：UCloud 计算层 + Launchpad 官方浏览器 SDK 管理 OIDC Code/PKCE + 服务端 `userinfo` 准入 + 本站服务端会话
+> 技术基线：Launchpad 托管 Next.js + React + TypeScript 应用、HTTPS 生产域名和同源 `/dashboard-api/` bridge；UCloud ULHost 只承载独立扫描服务，另接 PostgreSQL、私有 S3 兼容对象存储、共享限流存储与边缘 WAF/DDoS 防护
+> 已选定方案：Launchpad 计算层 + Launchpad 官方浏览器 SDK 管理 OIDC Code/PKCE + 服务端 `userinfo` 准入 + 本站服务端会话
 
 ## 1. 项目概述
 
@@ -75,7 +75,7 @@ MVP 默认采用封闭社区策略。Launchpad 本身仅供 SHSID 学生使用�
 - 本站用户状态必须为 `active`；
 - 以上规则不满足时，拒绝创建本站会话并展示明确但不过度泄露信息的错误说明。
 
-`org`、`verified` 和 `allows` 作为身份快照记录，不作为 MVP 登录阻断条件。若 Launchpad 日后开放给非 SHSID 用户，必须在开放前重新引入服务端组织或 capability 准入门槛；禁止仅依据邮箱后缀完成鉴权。
+`org` 和 `verified` 作为身份快照持久化；`allows` 仅作为 userinfo 输入校验，不在当前用户表中持久化。三者均不作为 MVP 登录阻断条件。若 Launchpad 日后开放给非 SHSID 用户，必须在开放前重新引入服务端组织或 capability 准入门槛；禁止仅依据邮箱后缀完成鉴权。
 
 ## 5. 分阶段范围
 
@@ -156,9 +156,9 @@ Phase 3 开始前必须明确：群聊是公开还是邀请制、消息是否自
 | AUTH-03 | P0 | Launchpad SDK 在保留 callback 上校验并交换一次 code；本站只接收 SDK 返回的短时 access token，不在 callback 再交换 code。 |
 | AUTH-04 | P0 | access token 不做本地 HS256 验签，身份以 Launchpad `/oauth/userinfo` 返回结果为准。 |
 | AUTH-05 | P0 | 使用 Launchpad `sub` 作为外部身份唯一键；email 只能作为资料字段，不作为主键。 |
-| AUTH-06 | P0 | 登录成功后签发本站随机会话标识，数据库仅保存哈希；首选 `HttpOnly + Secure + SameSite=Lax` Cookie。若已确认代理链不能保留应用 Cookie，才允许 IndexedDB + 同源 Service Worker 专用请求头的短期兼容传输。 |
+| AUTH-06 | P0 | 登录成功后签发本站随机会话标识，数据库仅保存哈希。当前因 Launchpad 代理不能可靠保留应用 Cookie，使用 IndexedDB + 同源 Service Worker 专用请求头的兼容传输；Launchpad 能可靠保留 `Set-Cookie` 后迁移至 `HttpOnly + Secure + SameSite=Lax` Cookie。 |
 | AUTH-07 | P0 | 全站业务路由、资源元数据接口和预签名 URL 接口均要求有效本站会话。 |
-| AUTH-08 | P0 | 登出使本站会话服务端失效并清除 Cookie；同时说明 Launchpad SDK 的本地登出不等于撤销 Launchpad 全局会话。 |
+| AUTH-08 | P0 | 登出使本站会话服务端失效并清除当前 IndexedDB token；迁移至 Cookie 后同时清除 Cookie。Launchpad SDK 的本地登出不等于撤销 Launchpad 全局会话。 |
 | AUTH-09 | P0 | 保存最近登录时间；不将 Launchpad access token、id token 写入日志。 |
 | AUTH-10 | P0 | 生产环境显式设置 `SHSID_LAUNCHPAD_OIDC_DEV=0`；发布健康检查必须验证 HTTPS、bootstrap、callback 和本站会话往返。 |
 | AUTH-11 | P0 | 在 Launchpad 维护者确认之前，本站会话绝对有效期不超过 1 小时；确认可独立长会话后，再通过配置调整。 |
@@ -268,13 +268,13 @@ OAuth 防护边界与执行顺序：
 
 | ID | 优先级 | 需求 |
 |---|---|---|
-| ENV-01 | P0 | UCloud ULHost 部署 Next.js 计算层、反向代理和独立扫描服务；PostgreSQL、S3 兼容存储、共享限流和机器人挑战作为外部服务。 |
-| ENV-02 | P0 | 本地开发使用未提交的 `.env.local`；生产变量和密钥通过 UCloud 主机上的受限运行环境或容器 Secrets 注入，禁止将真实值写入仓库、构建产物或镜像。 |
+| ENV-01 | P0 | Launchpad 部署 Next.js 计算层、HTTPS 域名和 OAuth bridge；UCloud ULHost 只部署独立扫描服务；PostgreSQL、S3 兼容存储、共享限流和机器人挑战作为外部服务。 |
+| ENV-02 | P0 | 本地开发使用未提交的 `.env.local`；应用生产变量和密钥通过 Launchpad 环境变量注入，扫描服务变量和密钥通过 UCloud 容器 Secrets 注入，禁止将真实值写入仓库、构建产物或镜像。 |
 | ENV-03 | P0 | 除明确可公开的机器人挑战 site key 外，密钥类变量禁止使用 `NEXT_PUBLIC_` 前缀，且只能在服务端模块中读取。 |
 | ENV-04 | P0 | 应用启动时使用运行时 schema 验证必需环境变量；缺失、类型错误或使用占位值时拒绝启动。 |
-| ENV-05 | P0 | 外部 PostgreSQL 连接必须使用 TLS、最小权限账号和受控连接池；连接上限必须与 UCloud 应用实例数量和数据库配额匹配。 |
+| ENV-05 | P0 | 外部 PostgreSQL 连接必须使用 TLS、最小权限账号和受控连接池；连接上限必须与 Launchpad 应用实例数量和数据库配额匹配。 |
 | ENV-06 | P0 | S3 凭据使用最小权限，只允许指定 bucket/prefix 的必要操作；CORS 只允许生产域名及必要的 `PUT/GET/HEAD` 方法和头部。 |
-| ENV-07 | P0 | 所有外部服务必须使用 TLS，并在 M0 验证 UCloud 的出口网络、DNS、防火墙/允许列表、延迟、超时和故障行为。 |
+| ENV-07 | P0 | 所有外部服务必须使用 TLS，并在 M0 分别验证 Launchpad 应用与 UCloud 扫描服务的出口网络、DNS、防火墙/允许列表、延迟、超时和故障行为。 |
 | ENV-08 | P0 | 密钥必须有明确所有者、轮换流程和撤销流程；轮换后旧凭据不得继续访问生产服务。 |
 
 ## 8. 关键业务流程
@@ -288,8 +288,8 @@ OAuth 防护边界与执行顺序：
 5. 用户在 Launchpad 登录并同意授权；同意页每次都会出现。
 6. Launchpad 将一次性 code 返回 `/__lp_auth/callback`。
 7. SDK 校验 `state`/`nonce`，使用原 verifier 换取 token；浏览器把短时 access token 提交到本站同源会话接口。
-8. 本站服务端调用 `/oauth/userinfo`，校验 `sub` 和用户封禁状态，记录 `org`、`verified`、`allows` 并创建或更新用户。
-9. 本站签发随机服务端会话；首选 HttpOnly Cookie，代理链无法保留 Cookie 时才启用 IndexedDB + Service Worker 兼容传输。
+8. 本站服务端调用 `/oauth/userinfo`，校验 `sub` 和用户封禁状态，持久化 `org`、`verified` 并创建或更新用户；当前用户表不持久化 `allows`。
+9. 本站签发随机服务端会话；当前使用 IndexedDB + Service Worker 兼容传输，Launchpad 能可靠保留 `Set-Cookie` 后迁移至 HttpOnly Cookie。
 
 ### 8.2 上传流程
 
@@ -318,11 +318,11 @@ OAuth 防护边界与执行顺序：
 | `/resources?collection=peer-advisors` | 按上传者 `peer advisors` 标签筛选的视图，不是管理员策展栏目 |
 | `/resources/new` | 文件选择、标题、描述、标签、上传进度和错误恢复 |
 | `/resources/[id]` | 资源元数据、下载、举报；作者可编辑/删除 |
-| `/me/resources` | 当前用户上传的 active、pending、hidden 和 failed 资源 |
+| `/me/resources` | 当前用户上传的 pending、scanning、active、hidden、quarantined、failed 和 deleted 资源；保留各状态原义，提供 All / Active / Scanning / Unavailable 筛选，Scanning 筛选包含 pending |
 | `/admin/reports` | 举报队列、资源状态、处理动作和原因 |
 | `/admin/audit` | 最近审计事件，仅管理员可见 |
 | `/auth/discovery` | M0 临时展示测试账号的 Launchpad `org` 与 `sub`，不创建用户或会话 |
-| `/auth/error` | 授权取消、组织不允许、验证失败、平台不可用等可操作错误提示 |
+| `/auth/error` | 授权取消、登录链接失效、账号封禁、平台不可用等可操作错误提示 |
 | `/privacy`、`/terms` | 隐私说明与可接受使用规则 |
 
 移动端优先，最低支持 360 px 宽度。搜索和下载应可仅使用键盘完成，主要表单字段包含可见 label，错误信息不能只依靠颜色传达。
@@ -332,14 +332,14 @@ OAuth 防护边界与执行顺序：
 ```mermaid
 flowchart LR
     U[学生浏览器] -->|页面与业务 API| E[边缘 CDN / WAF / DDoS 防护]
-    E -->|受信代理与真实客户端 IP| N[UCloud 上的 Next.js 应用]
+    E -->|受信代理与真实客户端 IP| N[Launchpad 上的 Next.js 应用]
     U -->|OIDC 顶层跳转| L[Launchpad]
     N -->|/dashboard-api OAuth bridge| L
-    V[UCloud 受限环境 / 容器 Secrets] -.->|配置注入| N
+    V[Launchpad 环境变量] -.->|配置注入| N
     N -->|TLS + Drizzle ORM| P[(外部 PostgreSQL)]
     N -->|原子计数器| R[(外部共享限流存储)]
     N -->|服务端校验| B[外部机器人挑战服务]
-    N -->|扫描请求 / 结果| M[外部恶意软件扫描]
+    N -->|扫描请求 / 结果| M[UCloud 独立恶意软件扫描]
     N -->|流式 PUT / HEAD / 签发 GET URL| S[(外部私有 S3 兼容存储)]
     U -->|短时效预签名 GET| S
 ```
@@ -351,13 +351,13 @@ flowchart LR
 - Next.js origin 前必须有边缘 DDoS/WAF 防护；origin 仅信任已配置的代理链，不信任公网客户端自带的转发 IP 头；
 - 应用层限流使用共享原子存储；机器人挑战结果在服务端与原操作同步校验；
 - 鉴权前先做 IP/总流量粗限流；允许必要的会话、用户状态或 OAuth 事务查询，再执行用户/操作级限流，拒绝后不执行后续高成本业务操作；
-- UCloud 部署单元承载 Next.js、反向代理和独立扫描容器；持久状态和文件使用外部 PostgreSQL 与 S3 兼容存储；
+- Launchpad 部署单元承载 Next.js、HTTPS 域名和同源 OAuth bridge；UCloud 部署单元只承载独立扫描容器；持久状态和文件使用外部 PostgreSQL 与 S3 兼容存储；
 - 外部 PostgreSQL 存储用户、会话、资源元数据、举报和审计记录；
 - 使用 Drizzle ORM 管理 schema 和 migration（原始需求中的 “prizzle” 按 Drizzle 理解）；
 - 文件只持久化在 S3 兼容对象存储中，bucket 默认为 private；上传正文可流经反向代理和 Next.js，但不得持久化到应用磁盘；
 - 服务端掌握 S3 凭据，仅向已鉴权用户签发单次用途、短时效 URL；
 - 定时任务对账并清理过期 `pending` 记录、孤儿对象和软删除对象；对象存储同时为 `pending/` 前缀配置 Lifecycle 兜底；
-- 本地开发使用未提交的 `.env.local`；生产密钥和连接串由 UCloud 受限运行环境或容器 Secrets 提供，不进入仓库、镜像或构建产物。
+- 本地开发使用未提交的 `.env.local`；应用生产密钥和连接串由 Launchpad 环境变量提供，扫描服务密钥由 UCloud 容器 Secrets 提供，均不进入仓库、镜像或构建产物。
 
 ### 10.2 环境变量合同
 
@@ -381,11 +381,11 @@ flowchart LR
 - 不在日志、错误页、前端 bundle、构建输出或监控 metadata 中输出变量值。
 - 密钥按服务独立分配并按期轮换；怀疑泄露时立即撤销并更换。
 
-## 11. UCloud 部署与 Launchpad 鉴权结论
+## 11. Launchpad 部署与 UCloud 扫描边界
 
 ### 11.1 已选定的生产方案
 
-MVP 固定采用：**Next.js 应用部署在指定 UCloud ULHost，生产 HTTPS 域名必须被 Launchpad 识别，并由受信任反向代理将 `/dashboard-api/` 转发到 Launchpad host-server。**
+MVP 固定采用：**Next.js 应用、生产 HTTPS 域名和同源 `/dashboard-api/` bridge 部署在 Launchpad；指定 UCloud ULHost 只运行独立恶意软件扫描服务，不运行本站 Next.js 应用。**
 
 身份接入固定采用 **Launchpad 官方浏览器 SDK 管理 OIDC Authorization Code + PKCE**，通过同源 `/dashboard-api/` bridge 访问 Launchpad。本站服务端用 SDK access token 调用 `/oauth/userinfo` 重新确认身份，再签发与 Launchpad token 分离的本站会话；客户端用户对象不是信任边界。
 
@@ -400,19 +400,19 @@ MVP 固定采用：**Next.js 应用部署在指定 UCloud ULHost，生产 HTTPS 
 
 | 方案 | 可行性 | 建议 |
 |---|---|---|
-| A. Next.js 部署到 Launchpad，并绑定 HTTPS 生产域名 | 可行 | 当前不采用 |
+| A. Next.js 部署到 Launchpad，并绑定 HTTPS 生产域名 | 已上线并完成生产域名验证 | **MVP 已选定** |
 | B. 使用 Launchpad 自动应用 URL | 可用，但默认可能只有 HTTP | 当前不采用 |
-| C. UCloud 自托管计算服务，生产域名由 Launchpad 识别并代理 OAuth bridge | 已具备服务器与部署路径，仍需生产 bridge 验证 | **MVP 已选定** |
+| C. UCloud 自托管 Next.js 计算服务，生产域名由 Launchpad 识别并代理 OAuth bridge | 不符合当前部署边界 | 不采用；UCloud 仅保留扫描服务 |
 | D. 任意外部域名直接调用 Launchpad OAuth API | 按当前说明不可行 | 禁止作为 MVP 方案 |
 
-方案 C 不是“直接调用公开 API”：生产 origin 仍必须被 Launchpad 识别，且 UCloud 前置代理必须可靠地将 `/dashboard-api/` 转发到 Launchpad host-server，并设置可信的 `X-Forwarded-Host`。不得允许公网客户端自行注入该请求头。
+方案 A 由 Launchpad 管理生产 origin 和同源 `/dashboard-api/` bridge。应用仍不得信任公网客户端自行注入的转发头；UCloud 扫描端点必须只接受持有专用扫描 token 的 HTTPS 请求，不承担 OAuth 或业务页面流量。
 
 PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应用 origin、OAuth bootstrap 和 bridge，不要求数据库与文件存储和 Launchpad 位于同一服务进程。
 
 ### 11.3 上线前必须完成的 Launchpad 验证
 
 - 确认生产域名能成功调用 `/dashboard-api/oauth/bootstrap`；
-- 确认生产域名使用 HTTPS，并完成一次 `Secure` 本站会话 Cookie 的写入与回传验证；
+- 确认生产域名使用 HTTPS，并完成当前 IndexedDB + Service Worker 会话传输的登录、退出、过期、跨域不注入和服务端撤销验证；
 - 确认生产环境 `SHSID_LAUNCHPAD_OIDC_DEV=0`，且客户端提交 `devOrigin` 无法绕过 origin 识别；
 - 确认 `client_id`、redirect URI 和 `/__lp_auth/callback` 一致；
 - 确认 `/dashboard-api/oauth/token` 与 `/oauth/userinfo` 可用；
@@ -515,7 +515,10 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 - 生产环境必须显式禁用 Launchpad OIDC 开发 origin 覆盖（`SHSID_LAUNCHPAD_OIDC_DEV=0`）；
 - S3 bucket 禁止公开读取与公开列举；
 - access token、id token、会话明文、预签名 URL 不进入应用日志；
-- Cookie 设置 `HttpOnly`、`Secure`、`SameSite=Lax`，并定期轮换会话；
+- 当前本站随机会话 token 只保存在 IndexedDB，由同源 Service Worker 仅向同源受保护请求注入；不得写入 Web Storage、URL、日志、监控或缓存，并定期轮换会话；
+- 该传输会降低传统跨站 CSRF 可利用性，但同源 XSS、受污染依赖或有站点权限的恶意扩展能够读取 IndexedDB，并在会话过期或撤销前重放 token，后果高于 HttpOnly Cookie。当前实现未发现向跨域、URL、日志或缓存传输本站 token 的路径，不等于风险为零；
+- 会话响应必须使用 `Cache-Control: no-store`，token 最长不超过 1 小时且数据库只存哈希；退出、封禁和过期必须在服务端撤销并清除 IndexedDB。Service Worker 不得向跨域请求或 `/dashboard-api/` 注入 token，也不得缓存带 token 的请求或响应；受保护端点不得把携带该头的请求重定向到跨域地址，回归测试必须覆盖跨域重定向不转发 token；
+- 学生内测前完成同源 XSS、依赖供应链、Service Worker 更新/注销、多标签退出和 token 泄露回归测试，逐步移除 CSP 的 `unsafe-inline`；Launchpad 能可靠保留 `Set-Cookie` 后迁移至 `HttpOnly + Secure + SameSite=Lax` Cookie 并删除兼容传输；
 - 文件类型不能只相信扩展名和浏览器 Content-Type，应检查对象元数据并在扫描阶段识别真实格式；
 - MVP 不提供在线文件预览，避免应用中转私有对象正文和浏览器解析 Office 文档的额外攻击面；
 - 边缘层限制总请求率、并发连接、异常路径和请求体大小；应用层对登录、搜索、上传意图、complete、下载链接签发和举报分别限流；
@@ -551,7 +554,7 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 - 合法 SHSID 用户能够完成 Launchpad 授权并进入 Resource Hub；
 - SDK 对 `state`/nonce 不匹配、code 重用或过期拒绝登录；本站对 userinfo 401 或已封禁用户拒绝创建会话，并记录身份属性；
 - 未知生产 origin 调用 bootstrap 时，不以开发模式绕过；
-- 生产域名为 HTTPS，登录后浏览器能够写入并回传 `Secure` 本站会话 Cookie；
+- 生产域名为 HTTPS，登录后 IndexedDB + Service Worker 兼容传输可用，且不会向跨域或 `/dashboard-api/` 请求注入本站 token；
 - 生产配置中 `SHSID_LAUNCHPAD_OIDC_DEV=0`；
 - 退出后原本站会话不能继续访问任何受保护 API；
 - 任何日志和错误监控中均找不到明文 token。
@@ -602,10 +605,10 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 
 ### 15.6 外部服务与配置安全
 
-- UCloud 应用容器重启、重新部署或回滚后，PostgreSQL 数据、S3 对象与未过期本站会话不会丢失；
+- Launchpad 应用重新部署或回滚、UCloud 扫描容器重启后，PostgreSQL 数据、S3 对象与未过期本站会话不会丢失；
 - 缺少必需环境变量、变量格式错误或使用占位值时，应用拒绝启动并给出不含敏感值的定位信息；
 - 仓库、前端 bundle、部署镜像、构建日志和错误监控中均找不到真实生产凭据；
-- UCloud 到 PostgreSQL、S3、限流和挑战服务的连接均使用 TLS；本机扫描服务只绑定回环地址，超时与故障行为符合 fail-closed/降级要求；
+- Launchpad 到 PostgreSQL、S3、限流、挑战和 UCloud 扫描端点的连接均使用 TLS；UCloud 扫描容器只在本机回环端口暴露给 HTTPS 反向代理，超时与故障行为符合 fail-closed/降级要求；
 - 数据库连接池在计划实例数下不超过数据库连接配额，并能从短时网络中断恢复；
 - S3 CORS 拒绝非允许 origin、非允许方法和非允许头部；S3 凭据无法访问范围外的 bucket/prefix；
 - 轮换数据库、S3 或第三方服务凭据后，新凭据可用且旧凭据已撤销。
@@ -614,7 +617,7 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 
 | 里程碑 | 交付内容 | 完成条件 |
 |---|---|---|
-| M0：技术验证 | UCloud HTTPS 生产域名与反向代理；Launchpad bootstrap、SDK callback、userinfo 和本站会话；外部 PostgreSQL、应用中转上传、S3 GET、扫描与清理；边缘/WAF、共享限流和机器人挑战；生产 Secrets 注入与轮换 | 在目标域名完成端到端 spike；确认 Launchpad 学生身份边界、会话政策、外部服务与凭据责任人；`SHSID_LAUNCHPAD_OIDC_DEV=0`；无关键未知项 |
+| M0：技术验证 | Launchpad HTTPS 生产域名与 OAuth bridge；SDK callback、userinfo 和本站兼容会话；外部 PostgreSQL、应用中转上传、S3 GET、UCloud 扫描与清理；边缘/WAF、共享限流和机器人挑战；生产 Secrets 注入与轮换 | 在目标域名完成端到端 spike；确认 Launchpad 学生身份边界、会话风险接受、外部服务与凭据责任人；`SHSID_LAUNCHPAD_OIDC_DEV=0`；无关键未知项 |
 | M1：身份与骨架 | 登录/登出、本站会话、用户表、受保护路由、基础页面 | 鉴权验收用例通过 |
 | M2：Resource Hub | 上传、complete、搜索、详情、下载、我的资源 | 核心资源流程端到端通过 |
 | M3：安全与管理 | 举报、隐藏、封禁、边缘/WAF、共享限流、机器人挑战、审计、清理任务 | 安全与管理验收用例及压力/滥用演练通过 |
@@ -626,9 +629,9 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 
 | 风险 | 影响 | 应对 |
 |---|---|---|
-| UCloud 自托管域名不被 Launchpad 识别 | 生产环境无法 bootstrap | 上线前由平台维护者完成域名识别和 bridge 验证 |
+| Launchpad 自定义域名或应用注册状态失效 | 生产环境无法 bootstrap | 发布后检查 deployed、integrated、registered 和 bridge 健康状态 |
 | 自定义域名缺少 `/dashboard-api/` bridge | OAuth 请求 404 | 重新 provision vhost，并加入部署健康检查 |
-| UCloud 域名或反向代理未正确启用 HTTPS | `Secure` Cookie、Service Worker 和 OAuth 安全上下文无法工作 | 生产绑定 HTTPS 域名并执行会话往返测试 |
+| Launchpad 自定义域名未正确启用 HTTPS | Service Worker 和 OAuth 安全上下文无法工作 | 生产绑定 HTTPS 域名并执行会话往返测试 |
 | 生产环境保留 OIDC 开发模式 | 代理错误时可能接受客户端声明的 `devOrigin` | 生产显式设置 `SHSID_LAUNCHPAD_OIDC_DEV=0`，并纳入发布检查 |
 | access/id token 约 1 小时，未提供 refresh-token 刷新流程 | 重跑授权流程可能影响体验 | 在平台确认前本站会话不超过 1 小时；确认后再设定独立会话时长和敏感操作重新验证 |
 | consent 每次授权都出现 | 登录体验比普通 SSO 更长 | 登录前明确说明；避免不必要地触发重新授权 |
@@ -638,22 +641,25 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 | 仅在应用层限流 | 大规模 DDoS 仍会在到达 Next.js 前耗尽带宽、连接或计算资源 | 在 origin 前部署 CDN/WAF/DDoS 防护，限制 origin 直达；应用限流仅作为第二层 |
 | 学校共享出口 IP 下的误封 | 多名正常学生同时受阻 | 组合使用 IP、用户/会话、操作与风险信号；对 IP 采用短时减速而非长时间全局封禁 |
 | 机器人挑战误判或供应商不可用 | 可访问性下降或核心流程被阻断 | 风险自适应触发、可访问的备选挑战、服务端校验、低风险读操作降级为严格限流，高风险写操作 fail-closed |
-| 生产 `.env` 或密钥进入仓库/构建产物 | 数据库、对象存储或第三方服务被越权访问 | 生产仅使用 UCloud 受限运行环境或容器 Secrets；仓库仅保留 `.env.example`；扫描历史、日志和构建产物 |
-| 在线文件预览导致应用带宽、连接和内存被文件流占用 | 普通页面/API 延迟升高，2 vCPU/4 GB 主机易被并发预览拖垮 | MVP 删除预览 API，只保留对象存储预签名下载 |
+| 生产 `.env` 或密钥进入仓库/构建产物 | 数据库、对象存储或第三方服务被越权访问 | 应用使用 Launchpad 环境变量、扫描使用 UCloud 容器 Secrets；仓库仅保留 `.env.example`；扫描历史、日志和构建产物 |
+| IndexedDB 会话 token 被同源 XSS、受污染依赖或恶意扩展读取 | 攻击者可在会话过期或撤销前冒充学生访问本站 | 一小时内过期、服务端哈希与撤销、严格同源注入、no-store、CSP/XSS 与依赖审查；Launchpad 支持可靠 Cookie 后迁移到 HttpOnly Cookie |
+| 在线文件预览导致应用带宽、连接和内存被文件流占用 | 普通页面/API 延迟升高，Launchpad 有限内存的应用容器易被并发预览拖垮 | MVP 删除预览 API，只保留对象存储预签名下载 |
 | 外部服务网络中断或延迟升高 | 登录后业务、上传、扫描或限流不可用 | M0 验证出口网络和超时；配置连接池、短重试和熔断；安全相关写操作 fail-closed |
 | 数据库连接池总量超过配额 | 请求堆积、超时和数据库拒绝新连接 | 按实例数计算总连接上限；使用外部连接池/代理；监控活跃和等待连接 |
 | 群聊范围过早扩大 | 审核和实时架构复杂度失控 | Phase 3 单独立项，先明确消息留存与治理规则 |
 
 ## 18. 上线前待确认事项
 
+截至 2026-11-03，生产站点已部署，基础生产冒烟检查 15 项通过；这不代表 M0 或学生内测验收完成。尚需归档外部服务完整就绪、50 MB 边界及并发上传、代理缓冲、WAF/origin 隔离、S3 CORS、浏览器兼容和会话泄露回归证据，以及下列责任人与风险接受记录。未取得证据的条目保持待验收，不因部署成功自动关闭。
+
 以下问题必须在指定门槛前确定；其中标记为 M0 阻断的项目未确认时，不得开放学生内测：
 
 1. **已确认：** Launchpad 仅供 SHSID 学生使用，因此 MVP 不重复使用 `org`、`verified` 或 `allows` 阻断登录；如果平台受众变化，必须先恢复服务端准入门槛。
-2. **M0 阻断：** Launchpad 是否允许本站会话长于其约 1 小时的 access token？允许时，推荐的绝对有效期和空闲有效期是多少？
+2. **当前基线已确定：** 本站会话绝对有效期不超过 1 小时；如需延长，先取得 Launchpad 政策确认并确定绝对/空闲有效期。维持当前上限无需等待延长政策。
 3. **M0 阻断：** 生产 HTTPS 域名、证书和 `/dashboard-api/` bridge 由谁配置并负责续期/健康检查？
 4. **M0 阻断：** 边缘 DDoS/WAF、origin 隔离、共享限流存储和机器人挑战分别由谁提供与运维？挑战服务的数据处理和可访问性是否符合学校要求？
-5. **M0 阻断：** 外部 PostgreSQL、S3、限流和挑战服务由谁提供、付费与运维？UCloud 到这些服务的出口网络、DNS、防火墙/允许列表和延迟是否通过验证？
-6. **M0 阻断：** 谁拥有 UCloud 生产环境与容器 Secrets 的配置权限？数据库、S3 和第三方凭据的轮换、撤销和泄露响应流程是什么？
+5. **M0 阻断：** 外部 PostgreSQL、S3、限流和挑战服务由谁提供、付费与运维？Launchpad 应用到这些服务以及到 UCloud 扫描端点的出口网络、DNS、防火墙/允许列表和延迟是否通过验证？
+6. **M0 阻断：** 谁拥有 Launchpad 应用环境变量与 UCloud 扫描容器 Secrets 的配置权限？数据库、S3 和第三方凭据的轮换、撤销和泄露响应流程是什么？
 7. 允许上传的最终文件类型和大小上限是什么？恶意软件扫描已确定为学生内测前的 P0 要求。
 8. 谁拥有管理员权限，举报的响应时限是多少？
 9. 资源作者删除内容后，对象文件需要立即物理删除还是保留短期恢复窗口？

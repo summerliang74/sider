@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/src/components/app-shell";
 import { SearchHub, type SerializedResourceListItem } from "@/src/components/search-hub";
 import { getCurrentUser } from "@/src/lib/auth/session";
+import { loginUrl } from "@/src/lib/auth/return-to";
 import { isResourceCollection, isResourceFileType } from "@/src/lib/resource-search";
 import { listActiveResources } from "@/src/lib/resources";
 
@@ -15,8 +16,8 @@ export default async function ResourcesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
   const params = await searchParams;
+  if (!user) redirect(loginUrl("/resources", params));
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 120) : "";
   const fileType = isResourceFileType(params.type) ? params.type : undefined;
   const collection = isResourceCollection(params.collection) ? params.collection : undefined;
@@ -35,6 +36,7 @@ export default async function ResourcesPage({
         <section className="page-heading">
           <div>
             <h1>{isPeerAdvisorView ? "Peer Advisor resources" : "Resource library"}</h1>
+            {isPeerAdvisorView ? <small className="muted">Tagged “peer advisors” by uploaders.</small> : null}
           </div>
           <Link className="button primary" href="/resources/new" prefetch={false}><span aria-hidden="true">＋</span> Upload resource</Link>
         </section>

@@ -4,6 +4,7 @@ import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 
 import { ensureAuthTransport, saveBrowserSession } from "@/src/lib/auth/browser-session";
+import { safeReturnTo } from "@/src/lib/auth/return-to";
 
 import { BotChallenge } from "./bot-challenge";
 
@@ -25,7 +26,7 @@ declare global {
   }
 }
 
-export function LaunchpadLogin({ challengeRequired = false }: { challengeRequired?: boolean }) {
+export function LaunchpadLogin({ challengeRequired = false, returnTo = "/resources" }: { challengeRequired?: boolean; returnTo?: string }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(
     challengeRequired ? "Please complete the traffic check before continuing." : "",
@@ -63,7 +64,7 @@ export function LaunchpadLogin({ challengeRequired = false }: { challengeRequire
         body: JSON.stringify({
           accessToken,
           botToken: challengeToken || undefined,
-          returnTo: "/resources",
+          returnTo: safeReturnTo(returnTo !== "/resources" ? returnTo : sessionStorage.getItem("sider-return-to")),
         }),
       });
       const result = await response.json() as {
@@ -100,6 +101,7 @@ export function LaunchpadLogin({ challengeRequired = false }: { challengeRequire
       }
 
       sdk.signOut();
+      sessionStorage.removeItem("sider-return-to");
       window.location.assign(result.redirectUrl);
     } catch {
       setMessage("Launchpad sign-in is temporarily unavailable.");
@@ -118,6 +120,8 @@ export function LaunchpadLogin({ challengeRequired = false }: { challengeRequire
     setBusy(true);
     setMessage("");
     try {
+      // Only a local navigation path is stored here, never a session credential.
+      sessionStorage.setItem("sider-return-to", safeReturnTo(returnTo));
       await ensureAuthTransport();
       const state = await sdk.ready();
       if (state.user && state.accessToken) {

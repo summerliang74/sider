@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { fetchLaunchpadUser, LaunchpadAccessTokenError } from "@/src/lib/auth/launchpad";
 import { createSession } from "@/src/lib/auth/session";
+import { safeReturnTo } from "@/src/lib/auth/return-to";
 import { AdmissionError, admitAndUpsertUser } from "@/src/lib/auth/users";
 import { verifyBotChallenge } from "@/src/lib/security/bot";
 import { enforceIpRateLimit } from "@/src/lib/security/rate-limit";
@@ -51,7 +52,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       {
         accessToken: session.token,
         expiresAt: session.expiresAt.toISOString(),
-        redirectUrl: parsed.data.returnTo,
+        redirectUrl: safeReturnTo(parsed.data.returnTo),
       },
       { headers: { "cache-control": "no-store" } },
     );

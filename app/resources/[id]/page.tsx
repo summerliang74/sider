@@ -5,6 +5,7 @@ import { AppShell } from "@/src/components/app-shell";
 import { formatBytes } from "@/src/components/resource-list";
 import { ResourceActions } from "@/src/components/resource-actions";
 import { getCurrentUser } from "@/src/lib/auth/session";
+import { loginUrl } from "@/src/lib/auth/return-to";
 import { getResourceForViewer } from "@/src/lib/resources";
 import { getDownloadOrigin } from "@/src/lib/storage";
 import { recordMetric } from "@/src/lib/telemetry";
@@ -17,8 +18,8 @@ export default async function ResourceDetailPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
   const { id } = await params;
+  if (!user) redirect(loginUrl(`/resources/${id}`, await searchParams));
   const resource = await getResourceForViewer(id, user);
   if (!resource) notFound();
   const query = await searchParams;

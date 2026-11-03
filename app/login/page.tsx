@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/src/lib/auth/session";
 import { LaunchpadLogin } from "@/src/components/launchpad-login";
+import { safeReturnTo } from "@/src/lib/auth/return-to";
 
 export const metadata = { title: "Sign in" };
 
@@ -12,8 +13,9 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  if (await getCurrentUser()) redirect("/resources");
   const params = await searchParams;
+  const returnTo = safeReturnTo(params.returnTo);
+  if (await getCurrentUser()) redirect(returnTo);
 
   return (
     <main className="auth-page">
@@ -34,7 +36,7 @@ export default async function LoginPage({
           <div className="auth-monogram" aria-hidden="true">S</div>
           <h2 id="login-title">A shared shelf for student knowledge.</h2>
           <p className="auth-intro">Sign in with your school workspace to browse and share verified resources.</p>
-          <LaunchpadLogin challengeRequired={params.challenge === "required"} />
+          <LaunchpadLogin returnTo={returnTo} challengeRequired={params.challenge === "required"} />
           <p className="privacy-note">By continuing, you agree to the student resource <Link href="/terms">policy</Link> and <Link href="/privacy">privacy notice</Link>.</p>
         </div>
       </section>

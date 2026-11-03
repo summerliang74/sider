@@ -8,7 +8,7 @@ import { getServerEnv } from "@/src/lib/env";
 
 export default async function NewResourcePage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/login?returnTo=%2Fresources%2Fnew");
   const uploadsEnabled = getServerEnv().malwareScanEnabled;
   return (
     <AppShell user={user} current="resources" title="Upload resource">
