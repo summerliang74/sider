@@ -186,13 +186,8 @@ export async function listActiveResources(input: {
     );
   }
 
-  const rows = await getDatabase().transaction(async (tx) => {
-    if (q) {
-      // The pg_trgm word-similarity operator reads this threshold. SET LOCAL
-      // keeps the lower typo-tolerant value scoped to this pooled transaction.
-      await tx.execute(sql`SET LOCAL pg_trgm.word_similarity_threshold = 0.3`);
-    }
-    return tx
+  const database = getDatabase();
+  const selectRows = (executor: Pick<typeof database, "select">) => executor
       .select({
         id: resources.id,
         title: resources.title,
@@ -216,7 +211,13 @@ export async function listActiveResources(input: {
           : [desc(published), desc(resources.id)]
       ))
       .limit(PAGE_SIZE + 1);
-  });
+  // Only text searches need transaction-scoped pg_trgm configuration.
+  const rows = q
+    ? await database.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL pg_trgm.word_similarity_threshold = 0.3`);
+      return selectRows(tx);
+    })
+    : await selectRows(database);
 
   const hasNextPage = rows.length > PAGE_SIZE;
   // postgres.js returns raw SQL expressions such as COALESCE as strings even

@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   execute: vi.fn(),
   limit: vi.fn(),
   orderBy: vi.fn(),
+  transaction: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -21,7 +22,8 @@ vi.mock("@/src/db", () => ({
         }),
       }),
     };
-    return { transaction: (callback: (value: typeof tx) => unknown) => callback(tx) };
+    mocks.transaction.mockImplementation((callback: (value: typeof tx) => unknown) => callback(tx));
+    return { ...tx, transaction: mocks.transaction };
   },
 }));
 
@@ -34,6 +36,7 @@ describe("resource listings", () => {
     mocks.limit.mockReset();
     mocks.orderBy.mockReset();
     mocks.orderBy.mockReturnValue({ limit: mocks.limit });
+    mocks.transaction.mockClear();
   });
 
   it("normalizes timestamps returned by raw PostgreSQL expressions", async () => {
@@ -58,6 +61,7 @@ describe("resource listings", () => {
     expect(result.items[0]?.publishedAt).toBeInstanceOf(Date);
     expect(result.items[0]?.publishedAt.toISOString()).toBe("2026-10-28T13:27:46.123Z");
     expect(mocks.execute).toHaveBeenCalledOnce();
+    expect(mocks.transaction).toHaveBeenCalledOnce();
   });
 
   it("does not order an empty search by the PostgreSQL positional constant zero", async () => {
@@ -68,6 +72,7 @@ describe("resource listings", () => {
     expect(mocks.orderBy).toHaveBeenCalledOnce();
     expect(mocks.orderBy.mock.calls[0]).toHaveLength(2);
     expect(mocks.execute).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
   it("turns database headline markers into safe structured segments", () => {
