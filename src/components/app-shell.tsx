@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { NavigationLink as Link } from "./navigation-link";
 import Image from "next/image";
 
 import type { CurrentUser } from "@/src/lib/auth/session";

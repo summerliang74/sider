@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { NavigationLink as Link } from "./navigation-link";
 
 import type { ResourceListItem, SearchHighlightSegment } from "@/src/lib/resources";
 

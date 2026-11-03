@@ -23,10 +23,10 @@ export default async function ResourcesPage({
   const fileType = isResourceFileType(params.type) ? params.type : undefined;
   const collection = isResourceCollection(params.collection) ? params.collection : undefined;
   const tag = typeof params.tag === "string" ? canonicalTag(params.tag.trim().slice(0, 30)) || undefined : collection ? "PA" : undefined;
-  const tagOptions = await listResourceTags();
-  const initialResult = !query && !fileType
-    ? await listActiveResources({ q: "", tag })
-    : undefined;
+  const [tagOptions, initialResult] = await Promise.all([
+    listResourceTags(),
+    !query && !fileType ? listActiveResources({ q: "", tag }) : undefined,
+  ]);
   const initialItems: SerializedResourceListItem[] | undefined = initialResult?.items.map((item) => ({
     ...item,
     publishedAt: item.publishedAt.toISOString(),

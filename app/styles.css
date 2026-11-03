@@ -245,6 +245,8 @@ button:active, .button:active, .nav a:active { background-color: var(--active); 
 .privacy-note { width: 340px; max-width: 100%; margin: 0; color: var(--muted); font-size: 11px; line-height: 16px; }
 .privacy-note a { text-decoration: underline; }
 
+.navigation-progress { position: fixed; z-index: 100; inset: 0 0 auto; height: 3px; background: var(--muted); pointer-events: none; }
+
 /* Supporting and admin screens */
 .challenge { border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--paper); padding: 14px; margin: 16px 0; }
 .challenge p { font-size: 12px; margin-top: 0; }
@@ -286,7 +288,7 @@ button:active, .button:active, .nav a:active { background-color: var(--active); 
   .upload-columns { grid-template-columns: minmax(0, 1fr); }
   .upload-guidance { width: 100%; }
   .guidance-item p { width: auto; }
-  .auth-page { grid-template-columns: 1fr; }
+  .auth-page { grid-template-columns: minmax(0, 1fr); }
   .auth-editorial { min-height: auto; }
   .auth-panel { min-height: 720px; }
 }
@@ -349,8 +351,8 @@ button:active, .button:active, .nav a:active { background-color: var(--active); 
   .auth-editorial { padding: 36px 24px; }
   .auth-brand { margin-bottom: 36px; }
   .auth-editorial h1 { font-size: 40px; line-height: 48px; }
-  .auth-panel { min-height: 620px; padding: 24px; }
-  .auth-card { width: 100%; padding: 32px 24px; }
+  .auth-panel { min-width: 0; min-height: 620px; padding: 24px; }
+  .auth-card { min-width: 0; width: 100%; padding: 32px 24px; overflow-wrap: anywhere; }
 }
 
 @media (prefers-reduced-motion: reduce) {
