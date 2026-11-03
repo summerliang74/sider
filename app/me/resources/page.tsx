@@ -7,6 +7,7 @@ import { getDatabase } from "@/src/db";
 import { resources } from "@/src/db/schema";
 import { getCurrentUser } from "@/src/lib/auth/session";
 import { loginUrl } from "@/src/lib/auth/return-to";
+import { startPageTiming, timeOperation } from "@/src/lib/telemetry";
 
 function fileLabel(filename: string): string {
   const extension = filename.split(".").pop()?.toUpperCase();
@@ -36,16 +37,20 @@ export default async function MyResourcesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const user = await getCurrentUser();
+  const recordTiming = startPageTiming("uploads");
+  const session = await timeOperation(getCurrentUser);
+  const user = session.value;
   const params = await searchParams;
   if (!user) redirect(loginUrl("/me/resources", params));
   const filter: UploadFilter = isUploadFilter(params.status) ? params.status : "all";
-  const items = await getDatabase()
+  const listing = await timeOperation(() => getDatabase()
     .select({ id: resources.id, title: resources.title, filename: resources.originalFilename, status: resources.status, createdAt: resources.createdAt })
     .from(resources)
     .where(eq(resources.authorId, user.id))
     .orderBy(desc(resources.createdAt))
-    .limit(100);
+    .limit(100));
+  const items = listing.value;
+  recordTiming({ sessionMs: session.durationMs, listMs: listing.durationMs });
 
   const activeCount = items.filter((item) => item.status === "active").length;
   const scanningCount = items.filter((item) => item.status === "scanning" || item.status === "pending").length;

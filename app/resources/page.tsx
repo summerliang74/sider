@@ -8,6 +8,7 @@ import { loginUrl } from "@/src/lib/auth/return-to";
 import { isResourceCollection, isResourceFileType } from "@/src/lib/resource-search";
 import { listActiveResources, listResourceTags } from "@/src/lib/resources";
 import { canonicalTag } from "@/src/lib/resource-tags";
+import { startPageTiming, timeOperation } from "@/src/lib/telemetry";
 
 export const metadata = { title: "Resources" };
 
@@ -16,17 +17,22 @@ export default async function ResourcesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const user = await getCurrentUser();
+  const recordTiming = startPageTiming("resources");
+  const session = await timeOperation(getCurrentUser);
+  const user = session.value;
   const params = await searchParams;
   if (!user) redirect(loginUrl("/resources", params));
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 120) : "";
   const fileType = isResourceFileType(params.type) ? params.type : undefined;
   const collection = isResourceCollection(params.collection) ? params.collection : undefined;
   const tag = typeof params.tag === "string" ? canonicalTag(params.tag.trim().slice(0, 30)) || undefined : collection ? "PA" : undefined;
-  const [tagOptions, initialResult] = await Promise.all([
-    listResourceTags(),
-    !query && !fileType ? listActiveResources({ q: "", tag }) : undefined,
+  const [tags, listing] = await Promise.all([
+    timeOperation(listResourceTags),
+    !query && !fileType ? timeOperation(() => listActiveResources({ q: "", tag })) : undefined,
   ]);
+  const tagOptions = tags.value;
+  const initialResult = listing?.value;
+  recordTiming({ sessionMs: session.durationMs, tagsMs: tags.durationMs, listMs: listing?.durationMs ?? null });
   const initialItems: SerializedResourceListItem[] | undefined = initialResult?.items.map((item) => ({
     ...item,
     publishedAt: item.publishedAt.toISOString(),
