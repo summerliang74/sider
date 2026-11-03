@@ -29,7 +29,6 @@ export default async function OrgDiscoveryPage() {
     <main className="auth-page">
       <section className="auth-card" aria-labelledby="discovery-title">
         <div className="monogram large" aria-hidden="true">S</div>
-        <p className="eyebrow">Temporary identity discovery</p>
         <h1 id="discovery-title">Launchpad identity found</h1>
         <p className="auth-intro">
           This account was not given an application session. Copy the exact values below, then disable discovery and redeploy.

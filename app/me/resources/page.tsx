@@ -56,7 +56,6 @@ export default async function MyResourcesPage({
         <section className="page-heading">
           <div>
             <h1>My uploads</h1>
-            <p>Track everything you have shared, including files that are still scanning or unavailable to classmates.</p>
           </div>
           <Link className="button primary" href="/resources/new">Upload resource</Link>
         </section>

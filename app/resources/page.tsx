@@ -35,7 +35,6 @@ export default async function ResourcesPage({
         <section className="page-heading">
           <div>
             <h1>{isPeerAdvisorView ? "Peer Advisor resources" : "Resource library"}</h1>
-            <p>{isPeerAdvisorView ? "Guides and references for students who support others." : "Notes, guides, and useful files. Shared by your SHSID classmates."}</p>
           </div>
           <Link className="button primary" href="/resources/new" prefetch={false}><span aria-hidden="true">＋</span> Upload resource</Link>
         </section>
@@ -47,7 +46,7 @@ export default async function ResourcesPage({
           initialItems={initialItems}
           initialNextCursor={initialResult?.nextCursor}
         />
-        <footer className="footer"><span>Sider · student resource hub</span><span><Link href="/privacy">Privacy</Link> · <Link href="/terms">Terms</Link></span></footer>
+        <footer className="footer"><Link href="/privacy">Privacy</Link><span aria-hidden="true">·</span><Link href="/terms">Terms</Link></footer>
       </div>
     </AppShell>
   );

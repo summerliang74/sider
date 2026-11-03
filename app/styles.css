@@ -56,8 +56,7 @@ button:active, .button:active, .nav a:active { background-color: var(--active); 
 .sidebar { width: 224px; position: fixed; inset: 0 auto 0 0; z-index: 2; display: flex; flex-direction: column; overflow-y: auto; background: var(--paper); border-right: 1px solid var(--line); padding: 24px 16px 18px; }
 .brand { height: 34px; display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 600; line-height: 28px; }
 .brand:hover { text-decoration: none; }
-.workspace-label { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 18px; }
-.nav { display: grid; gap: 4px; margin-top: 28px; }
+.nav { display: grid; gap: 4px; margin-top: 22px; }
 .nav-section { display: grid; gap: 4px; }
 .nav-section-separated { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
 .nav-section-label { margin: 0 12px 4px; color: var(--muted); font-size: 12px; font-weight: 500; line-height: 18px; }
@@ -67,9 +66,6 @@ button:active, .button:active, .nav a:active { background-color: var(--active); 
 .nav-pa-mark { width: 22px; height: 22px; flex: 0 0 auto; display: grid; place-items: center; border-radius: var(--radius-sm); background: var(--purple-soft); color: #6940a5; font-size: 9px; font-weight: 700; line-height: 1; }
 .nav-upload-mark { width: 20px; text-align: center; font-size: 22px; line-height: 20px; }
 .nav a.selected .nav-pa-mark { background: #e5d9f5; color: #533185; }
-.sidebar-note { border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; line-height: 16px; margin-top: 28px; padding-top: 18px; }
-.sidebar-note strong { color: var(--ink); font-size: 12px; font-weight: 600; letter-spacing: .4px; }
-.sidebar-note p { margin: 4px 0 0; }
 .profile { height: 52px; border-top: 1px solid var(--line); margin-top: auto; padding-top: 12px; display: flex; gap: 10px; align-items: center; }
 .avatar { min-width: 32px; height: 32px; padding-inline: 8px; border-radius: var(--radius-md); display: grid; place-items: center; background: var(--active); font-size: 12px; font-weight: 600; letter-spacing: .4px; }
 .profile-copy { min-width: 0; width: 118px; }
@@ -82,7 +78,6 @@ button:active, .button:active, .nav a:active { background-color: var(--active); 
 .topbar { height: 58px; border-bottom: 1px solid var(--line); padding: 0 32px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .breadcrumbs { display: flex; gap: 10px; color: var(--muted); font-size: 12px; line-height: 18px; }
 .breadcrumbs span:last-child { color: var(--ink); }
-.top-meta { color: var(--muted); font-size: 11px; line-height: 16px; display: flex; align-items: center; gap: 8px; }
 .mobile-brand, .mobile-menu { display: none; }
 .content { width: min(1040px, calc(100% - 96px)); margin: 0 auto; padding: 48px 0 24px; }
 
@@ -138,7 +133,7 @@ button:active, .button:active, .nav a:active { background-color: var(--active); 
 .empty h2 { margin: 0 0 8px; font-size: 20px; font-weight: 600; }
 .empty p { color: var(--muted); font-size: 14px; }
 .pagination { display: flex; justify-content: flex-end; padding-top: 20px; }
-.footer { color: var(--muted); display: flex; justify-content: space-between; gap: 15px; margin-top: 36px; padding-top: 20px; font-size: 12px; }
+.footer { color: var(--muted); display: flex; justify-content: flex-end; gap: 8px; margin-top: 36px; padding-top: 20px; font-size: 12px; }
 
 /* My uploads */
 .uploads-page { padding-block: 40px; }
@@ -283,7 +278,6 @@ button:active, .button:active, .nav a:active { background-color: var(--active); 
 @media (max-width: 920px) {
   .shell { grid-template-columns: 208px minmax(0, 1fr); }
   .sidebar { width: 208px; padding-inline: 16px; }
-  .workspace-label { font-size: 10px; }
   .content { width: calc(100% - 40px); }
   .page-heading { flex-wrap: wrap; gap: 16px; }
   .resource-row { grid-template-columns: 10px 38px minmax(0, 1fr) 100px; gap: 10px; }
@@ -304,7 +298,6 @@ button:active, .button:active, .nav a:active { background-color: var(--active); 
   .topbar { min-height: 60px; height: auto; padding: 10px 18px; flex-wrap: wrap; position: relative; }
   .mobile-brand { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 600; }
   .breadcrumbs { display: none; }
-  .top-meta { display: none; }
   .mobile-menu { display: block; margin-left: auto; }
   .mobile-menu summary { list-style: none; }
   .mobile-menu summary::-webkit-details-marker { display: none; }
