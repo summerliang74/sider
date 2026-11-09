@@ -4,7 +4,7 @@ import { isIP } from "node:net";
 
 import { getServerEnv } from "@/src/lib/env";
 
-export function getClientIp(request: Request): string {
+export function getClientIp(request: { headers: Pick<Headers, "get"> }): string {
   const value = request.headers.get(getServerEnv().TRUSTED_CLIENT_IP_HEADER)?.trim() ?? "";
   return isIP(value) ? value : "unknown";
 }

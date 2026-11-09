@@ -33,8 +33,13 @@ check(
 check(login.headers.get("x-frame-options") === "DENY", "frame protection");
 
 const resources = await request("/resources");
-check([302, 303, 307, 308].includes(resources.status), "protected resource redirect");
-check(resources.headers.get("location") === "/login", "protected resource redirect target");
+const resourcesHtml = await resources.text();
+// A loading boundary can flush a 200 response before authentication completes.
+// Next.js then emits its redirect meta tag and handles navigation on the client.
+const streamedRedirect = resourcesHtml.match(/<meta id="__next-page-redirect" http-equiv="refresh" content="\d+;url=([^"]+)"\s*\/?>/)?.[1];
+const httpRedirect = [302, 303, 307, 308].includes(resources.status);
+check(httpRedirect || (resources.status === 200 && Boolean(streamedRedirect)), "protected resource redirect");
+check((httpRedirect ? resources.headers.get("location") : streamedRedirect) === "/login", "protected resource redirect target");
 check(resources.headers.get("cache-control")?.includes("no-store"), "protected page cache control");
 
 const me = await request("/api/me");

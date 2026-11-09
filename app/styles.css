@@ -81,6 +81,17 @@ button:active, .button:active, .nav a:active { background-color: var(--active); 
 .mobile-brand, .mobile-menu { display: none; }
 .content { width: min(1040px, calc(100% - 96px)); margin: 0 auto; padding: 48px 0 24px; }
 
+/* Loading placeholders use the same grid as the loaded resource rows. */
+.skeleton-block { display: block; max-width: 100%; height: 14px; border-radius: var(--radius-sm); background: var(--hover); }
+.skeleton-heading { width: 180px; height: 34px; }
+.skeleton-nav { width: 100%; height: 42px; }
+.skeleton-copy { gap: 10px; }
+.skeleton-title { width: 55%; height: 20px; }
+.skeleton-description { width: 85%; }
+.skeleton-meta { width: 160px; height: 12px; }
+.skeleton-tag { width: 64px; height: 22px; }
+.skeleton-filter { width: 120px; height: 36px; }
+
 /* Resource hub */
 .page-heading, .hero { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 30px; }
 .page-heading > div { min-width: 0; }

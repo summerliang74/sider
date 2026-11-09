@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { TagPicker } from "./tag-picker";
@@ -15,16 +15,36 @@ export function UploadForm({ isAdmin = false }: { isAdmin?: boolean }) {
   const [challengeAction, setChallengeAction] = useState<"upload" | "complete" | null>(null);
   const [botToken, setBotToken] = useState("");
   const [pendingCompleteId, setPendingCompleteId] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const uploadBatch = useRef<{ data: FormData; files: File[]; index: number; resourceId?: string } | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    const file = data.get("file");
-    if (!(file instanceof File) || file.size === 0) {
+    const files = data.getAll("file").filter((value): value is File => value instanceof File && value.size > 0);
+    if (!uploadBatch.current && (files.length === 0 || files.length > 5)) {
       setStage("error");
-      setMessage("Choose a file before uploading.");
+      setMessage("Choose between 1 and 5 files before uploading.");
+      return;
+    }
+    if (!uploadBatch.current) uploadBatch.current = { data, files, index: 0 };
+    await uploadNext(botToken);
+  }
+
+  async function uploadNext(token?: string) {
+    const batch = uploadBatch.current;
+    if (!batch) return;
+    if (batch.resourceId) {
+      await finishComplete(batch.resourceId);
+      return;
+    }
+    const { data } = batch;
+    const file = batch.files[batch.index];
+    if (!file) {
+      uploadBatch.current = null;
+      setStage("error");
+      setMessage("The upload queue is invalid. Choose the files again.");
       return;
     }
     setMessage("");
@@ -41,7 +61,7 @@ export function UploadForm({ isAdmin = false }: { isAdmin?: boolean }) {
           originalFilename: file.name,
           sizeBytes: file.size,
           mimeType: file.type || "application/octet-stream",
-          botToken: botToken || undefined,
+          botToken: token || undefined,
         }),
         signal: AbortSignal.timeout(30_000),
       });
@@ -83,6 +103,7 @@ export function UploadForm({ isAdmin = false }: { isAdmin?: boolean }) {
     }
 
     setStage("scanning");
+    if (uploadBatch.current) uploadBatch.current.resourceId = intent.resourceId;
     await finishComplete(intent.resourceId);
   }
 
@@ -117,7 +138,17 @@ export function UploadForm({ isAdmin = false }: { isAdmin?: boolean }) {
     setStage("done");
     setChallengeAction(null);
     setPendingCompleteId(null);
-    router.push(`/resources/${resourceId}`);
+    const batch = uploadBatch.current;
+    if (batch) {
+      batch.index += 1;
+      batch.resourceId = undefined;
+      if (batch.index < batch.files.length) {
+        await uploadNext();
+        return;
+      }
+    }
+    uploadBatch.current = null;
+    router.push(batch && batch.files.length > 1 ? "/me/resources" : `/resources/${resourceId}`);
     router.refresh();
   }
 
@@ -127,7 +158,7 @@ export function UploadForm({ isAdmin = false }: { isAdmin?: boolean }) {
     <label className="field"><span>Title</span><input name="title" required minLength={1} maxLength={120} placeholder="Enter a clear resource title" /><small>Keep it specific and easy to scan.</small></label>
     <label className="field"><span>Description</span><textarea name="description" maxLength={2000} rows={5} placeholder="Describe what this resource covers" /><small>A short summary helps classmates judge relevance.</small></label>
     <TagPicker isAdmin={isAdmin} />
-    <label className="field file-field"><span>FILE</span><span className={`dropzone${selectedFile ? " selected" : ""}`}><strong>{selectedFile ? selectedFile.name : "Drop a file here, or choose from your device"}</strong><small>{selectedFile ? `${formatBytes(selectedFile.size)} · choose another file to replace it` : "PDF, Office, text, PNG or JPEG · up to 50 MB"}</small><input name="file" type="file" required accept=".pdf,.docx,.pptx,.xlsx,.txt,.png,.jpg,.jpeg" onChange={(event) => setSelectedFile(event.currentTarget.files?.[0] ?? null)} /></span></label>
+    <label className="field file-field"><span>FILES (5 files at most)</span><span className={`dropzone${selectedFiles.length ? " selected" : ""}`}><strong>{selectedFiles.length ? selectedFiles.map((file) => file.name).join(", ") : "Choose up to 5 files from your device"}</strong><small>{selectedFiles.length ? `${selectedFiles.length} files · ${formatBytes(selectedFiles.reduce((total, file) => total + file.size, 0))}` : "PDF, Office, text, PNG or JPEG · up to 50 MB per file"}</small><input name="file" type="file" multiple required disabled={busy || uploadBatch.current !== null} accept=".pdf,.docx,.pptx,.xlsx,.txt,.png,.jpg,.jpeg" onChange={(event) => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.setCustomValidity(files.length > 5 ? "Choose at most 5 files." : ""); setSelectedFiles(files); }} /></span><small>All files share the same title, description and tags.</small></label>
     {challengeAction ? <div className="challenge"><p>Please complete this check to continue.</p><BotChallenge action={challengeAction} onToken={(token) => { setBotToken(token); if (challengeAction === "complete" && pendingCompleteId && token) void finishComplete(pendingCompleteId, token); }} /></div> : null}
     {message ? <p className="form-error" role="alert">{message}</p> : null}
     <div className="form-bottom"><small aria-live="polite">{stage === "preparing" ? "Preparing secure upload…" : stage === "uploading" ? "Uploading securely…" : stage === "scanning" ? "Scanning the file before publication…" : stage === "done" ? "Published." : "Files remain private until the scan passes."}</small><button className="button primary" type="submit" disabled={busy || (challengeAction === "upload" && !botToken) || challengeAction === "complete"}>{submitLabel}</button></div>

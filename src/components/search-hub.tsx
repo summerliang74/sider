@@ -15,6 +15,13 @@ import { ResourceList } from "./resource-list";
 export type SerializedResourceListItem = Omit<ResourceListItem, "publishedAt"> & { publishedAt: string };
 type PendingSearch = { query: string; fileType?: ResourceFileType; tag?: string; cursor?: string };
 
+function searchErrorMessage(error?: string): string {
+  if (!error) return "";
+  if (error === "bot_challenge_required") return "Please complete the traffic check to continue searching.";
+  if (error === "rate_limited") return "Too many searches. Please wait and try again.";
+  return "Search is temporarily unavailable.";
+}
+
 export function SearchHub({
   initialQuery,
   initialFileType,
@@ -22,6 +29,7 @@ export function SearchHub({
   initialItems,
   tagOptions,
   initialNextCursor,
+  initialError,
 }: {
   initialQuery: string;
   initialFileType?: ResourceFileType;
@@ -29,6 +37,7 @@ export function SearchHub({
   tagOptions: string[];
   initialItems?: SerializedResourceListItem[];
   initialNextCursor?: string | null;
+  initialError?: string;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [draftQuery, setDraftQuery] = useState(initialQuery);
@@ -40,9 +49,11 @@ export function SearchHub({
     publishedAt: new Date(item.publishedAt),
   })));
   const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor ?? null);
-  const [loading, setLoading] = useState(initialItems === undefined);
-  const [error, setError] = useState("");
-  const [pending, setPending] = useState<PendingSearch | null>(null);
+  const [loading, setLoading] = useState(initialItems === undefined && !initialError);
+  const [error, setError] = useState(searchErrorMessage(initialError));
+  const [pending, setPending] = useState<PendingSearch | null>(() => initialError === "bot_challenge_required"
+    ? { query: initialQuery, fileType: initialFileType, tag: initialTag }
+    : null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const request = useRef<AbortController | null>(null);
 
@@ -78,11 +89,11 @@ export function SearchHub({
       if (controller.signal.aborted) return;
       if (result.error === "bot_challenge_required") {
         setPending({ query: targetQuery, fileType: targetFileType, tag: targetTag, cursor });
-        setError("Please complete the traffic check to continue searching.");
+        setError(searchErrorMessage(result.error));
         return;
       }
       if (!response.ok || !result.items) {
-        setError(result.error === "rate_limited" ? "Too many searches. Please wait and try again." : "Search is temporarily unavailable.");
+        setError(searchErrorMessage(result.error ?? "search_unavailable"));
         return;
       }
       const normalized = result.items.map((item) => ({ ...item, publishedAt: new Date(item.publishedAt) }));
@@ -98,10 +109,10 @@ export function SearchHub({
   useEffect(() => () => request.current?.abort(), []);
 
   useEffect(() => {
-    if (initialItems !== undefined) return;
+    if (initialItems !== undefined || initialError) return;
     const timer = window.setTimeout(() => void load(initialQuery, initialFileType, initialTag), 0);
     return () => window.clearTimeout(timer);
-  }, [initialTag, initialFileType, initialItems, initialQuery, load]);
+  }, [initialTag, initialFileType, initialItems, initialError, initialQuery, load]);
 
   function replaceSearchUrl(targetQuery: string, targetFileType?: ResourceFileType, targetTag?: string) {
     const params = new URLSearchParams();

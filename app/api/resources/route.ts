@@ -1,21 +1,15 @@
 import { getCurrentUser } from "@/src/lib/auth/session";
 import { noStoreJson } from "@/src/lib/http";
 import { listActiveResources, resourceSearchSchema } from "@/src/lib/resources";
-import { enforceIpRateLimit, enforceUserRateLimit } from "@/src/lib/security/rate-limit";
-import { getClientIp } from "@/src/lib/security/request";
+import { authorizeResourceSearch } from "@/src/lib/resource-search-request";
 import { securityErrorResponse } from "@/src/lib/security/responses";
 import { recordMetric } from "@/src/lib/telemetry";
-import { verifyBotChallenge } from "@/src/lib/security/bot";
 import { decodeResourceCursor } from "@/src/lib/resource-cursor";
 
 export async function GET(request: Request) {
   try {
-    const ip = getClientIp(request);
-    const ipLimit = await enforceIpRateLimit("search", ip);
-    const user = await getCurrentUser(request);
+    const user = await authorizeResourceSearch(request, () => getCurrentUser(request));
     if (!user) return noStoreJson({ error: "unauthorized" }, { status: 401 });
-    const userLimit = await enforceUserRateLimit("search", user.id);
-    await verifyBotChallenge({ required: ipLimit.risky || userLimit.risky, token: request.headers.get("x-bot-token") ?? undefined, action: "search", ip });
 
     const url = new URL(request.url);
     const parsed = resourceSearchSchema.safeParse({

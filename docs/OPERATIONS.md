@@ -2,18 +2,18 @@
 
 This file turns the PRD's external-service requirements into an operator checklist. It does not contain credentials.
 
-For Launchpad OAuth/domain registration and bridge requirements, follow [LAUNCHPAD-SETUP.md](./LAUNCHPAD-SETUP.md). Application deployment and production secrets are managed on the UCloud host, not in a Launchpad application release.
+For Launchpad OAuth/domain registration and bridge requirements, follow [LAUNCHPAD-SETUP.md](./LAUNCHPAD-SETUP.md). The Next.js application, custom domain, and application secrets are managed in the Launchpad project. UCloud is used only for the isolated malware scanner.
 
 ## Required topology
 
-Internet traffic must terminate at a managed CDN/WAF/DDoS layer. Only that layer may reach the UCloud application origin. It must overwrite the header named by `TRUSTED_CLIENT_IP_HEADER`; client-supplied forwarding headers must be discarded. The application must not have another publicly reachable origin address.
+Internet traffic reaches the Launchpad-hosted application through its managed HTTPS custom domain and edge. The trusted edge must overwrite the header named by `TRUSTED_CLIENT_IP_HEADER`; client-supplied forwarding headers must be discarded.
 
-The UCloud host runs the reverse proxy, Next.js compute process, and the isolated `sider-scanner` Compose project. PostgreSQL, private S3-compatible storage, Redis REST, and the bot verifier remain external and must survive application deployment and rollback independently. Never modify `/root/.openclaw` as part of Sider operations.
+Launchpad runs the Next.js compute process, HTTPS custom domain, and OAuth bridge. The UCloud host runs only the isolated `sider-scanner` Compose project. PostgreSQL, private S3-compatible storage, Redis REST, and the bot verifier remain external and must survive application deployment and rollback independently. Never modify `/root/.openclaw` as part of Sider operations.
 
 ## PostgreSQL
 
 - Create a least-privilege application role and require TLS (`sslmode=require`, `verify-ca`, or `verify-full`).
-- Set `DATABASE_MAX_CONNECTIONS × maximum UCloud application instances` below the provider connection quota.
+- Set `DATABASE_MAX_CONNECTIONS × maximum Launchpad application instances` below the provider connection quota.
 - Run `npm run db:migrate` as a controlled release step before activating the new application version.
 - Enable encrypted automated backups. Before beta, restore a backup into an isolated database and record the recovery time and result.
 
@@ -55,7 +55,7 @@ Run an abuse exercise covering forged forwarding headers, invalid/replayed SDK s
 
 ## Secrets and rotation
 
-Store all production values in a root-readable UCloud runtime environment file or container secret store outside the repository and image. Only `NEXT_PUBLIC_BOT_SITE_KEY` is public. Give every credential an owner and expiry/rotation date. Rotation is complete only after the new credential works and the old credential is proven unable to access the service.
+Store application production values in Launchpad environment variables and scanner-only values in the root-readable UCloud scanner environment or container secret store, always outside the repository and image. Only `NEXT_PUBLIC_BOT_SITE_KEY` is public. Give every credential an owner and expiry/rotation date. Rotation is complete only after the new credential works and the old credential is proven unable to access the service.
 
 `SHSID_ADMIN_SUBS` is the comma-separated, reviewed allow-list of exact Launchpad subject identifiers for administrators. Changes are enforced on the next authenticated request or successful sign-in. Removing a subject demotes it and revokes its current sessions when it next reaches the application.
 

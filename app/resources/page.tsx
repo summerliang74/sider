@@ -1,16 +1,47 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { AppShell } from "@/src/components/app-shell";
 import { SearchHub, type SerializedResourceListItem } from "@/src/components/search-hub";
-import { getCurrentUser } from "@/src/lib/auth/session";
+import { ResourceSearchSkeleton } from "@/src/components/resource-loading";
+import { getCurrentUser, type CurrentUser } from "@/src/lib/auth/session";
 import { loginUrl } from "@/src/lib/auth/return-to";
 import { isResourceCollection, isResourceFileType } from "@/src/lib/resource-search";
-import { listActiveResources, listResourceTags } from "@/src/lib/resources";
+import { listResourceTags } from "@/src/lib/resources";
+import { getInitialResourceSearch } from "@/src/lib/resource-search-request";
 import { canonicalTag } from "@/src/lib/resource-tags";
 import { startPageTiming, timeOperation } from "@/src/lib/telemetry";
 
 export const metadata = { title: "Resources" };
+
+async function ResourceSearchContent({ user, filters, sessionMs, recordTiming }: {
+  user: CurrentUser;
+  filters: Parameters<typeof getInitialResourceSearch>[0];
+  sessionMs: number;
+  recordTiming: ReturnType<typeof startPageTiming>;
+}) {
+  const requestHeaders = await headers();
+  const [tags, listing] = await Promise.all([
+    timeOperation(listResourceTags),
+    timeOperation(() => getInitialResourceSearch(filters, user, { headers: requestHeaders })),
+  ]);
+  recordTiming({ sessionMs, tagsMs: tags.durationMs, listMs: listing.durationMs });
+  const initialItems: SerializedResourceListItem[] = listing.value.items.map((item) => ({
+    ...item,
+    publishedAt: item.publishedAt.toISOString(),
+  }));
+  return <SearchHub
+    initialQuery={filters.q}
+    initialFileType={filters.fileType}
+    initialTag={filters.tag}
+    tagOptions={tags.value}
+    initialItems={initialItems}
+    initialNextCursor={listing.value.nextCursor}
+    initialError={listing.value.error}
+  />;
+}
 
 export default async function ResourcesPage({
   searchParams,
@@ -26,17 +57,6 @@ export default async function ResourcesPage({
   const fileType = isResourceFileType(params.type) ? params.type : undefined;
   const collection = isResourceCollection(params.collection) ? params.collection : undefined;
   const tag = typeof params.tag === "string" ? canonicalTag(params.tag.trim().slice(0, 30)) || undefined : collection ? "PA" : undefined;
-  const [tags, listing] = await Promise.all([
-    timeOperation(listResourceTags),
-    !query && !fileType ? timeOperation(() => listActiveResources({ q: "", tag })) : undefined,
-  ]);
-  const tagOptions = tags.value;
-  const initialResult = listing?.value;
-  recordTiming({ sessionMs: session.durationMs, tagsMs: tags.durationMs, listMs: listing?.durationMs ?? null });
-  const initialItems: SerializedResourceListItem[] | undefined = initialResult?.items.map((item) => ({
-    ...item,
-    publishedAt: item.publishedAt.toISOString(),
-  }));
 
   return (
     <AppShell user={user} current="resources">
@@ -47,15 +67,9 @@ export default async function ResourcesPage({
           </div>
           <Link className="button primary" href="/resources/new" prefetch={false}><span aria-hidden="true">＋</span> Upload resource</Link>
         </section>
-        <SearchHub
-          key={JSON.stringify([tag, query, fileType])}
-          initialQuery={query}
-          initialFileType={fileType}
-          initialTag={tag}
-          tagOptions={tagOptions}
-          initialItems={initialItems}
-          initialNextCursor={initialResult?.nextCursor}
-        />
+        <Suspense key={JSON.stringify([tag, query, fileType])} fallback={<ResourceSearchSkeleton />}>
+          <ResourceSearchContent user={user} filters={{ q: query, fileType, tag }} sessionMs={session.durationMs} recordTiming={recordTiming} />
+        </Suspense>
         <footer className="footer"><Link href="/privacy">Privacy</Link><span aria-hidden="true">·</span><Link href="/terms">Terms</Link></footer>
       </div>
     </AppShell>
