@@ -31,8 +31,8 @@ export function AppShell({
         </Link>
         <nav className="nav" aria-label="Primary navigation">
           <div className="nav-section">
-            <Link className={current === "resources" ? "selected" : undefined} aria-current={current === "resources" ? "page" : undefined} href="/resources" prefetchOnIntent><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>Resources</span></Link>
-            <Link className={current === "mine" ? "selected" : undefined} aria-current={current === "mine" ? "page" : undefined} href="/me/resources" prefetchOnIntent><span className="nav-upload-mark" aria-hidden="true">↑</span><span>My uploads</span></Link>
+            <Link className={current === "resources" ? "selected" : undefined} aria-current={current === "resources" ? "page" : undefined} href="/resources" prefetchOnIntent prefetchWhenIdle><Image src="/figma/nav-resource.svg" alt="" width={20} height={20} aria-hidden="true" /><span>Resources</span></Link>
+            <Link className={current === "mine" ? "selected" : undefined} aria-current={current === "mine" ? "page" : undefined} href="/me/resources" prefetchOnIntent prefetchWhenIdle><span className="nav-upload-mark" aria-hidden="true">↑</span><span>My uploads</span></Link>
           </div>
           {user.role === "admin" ? <div className="nav-section nav-section-separated"><p className="nav-section-label">ADMINISTRATION</p><Link className={current === "admin" ? "selected" : undefined} href="/admin/reports" prefetch={false}>⚑ <span>Reports</span></Link><Link href="/admin/audit" prefetch={false}>☷ <span>Audit log</span></Link></div> : null}
         </nav>
@@ -49,8 +49,8 @@ export function AppShell({
           <details className="mobile-menu">
             <summary className="button">Menu <span aria-hidden="true">☰</span></summary>
             <nav className="mobile-links" aria-label="Mobile navigation">
-              <Link aria-current={current === "resources" ? "page" : undefined} href="/resources" prefetchOnIntent>Resources</Link>
-              <Link aria-current={current === "mine" ? "page" : undefined} href="/me/resources" prefetchOnIntent>My uploads</Link>
+              <Link aria-current={current === "resources" ? "page" : undefined} href="/resources" prefetchOnIntent prefetchWhenIdle>Resources</Link>
+              <Link aria-current={current === "mine" ? "page" : undefined} href="/me/resources" prefetchOnIntent prefetchWhenIdle>My uploads</Link>
               {user.role === "admin" ? <><Link href="/admin/reports" prefetch={false}>Reports</Link><Link href="/admin/audit" prefetch={false}>Audit log</Link></> : null}
               <LogoutButton>Sign out</LogoutButton>
             </nav>

@@ -43,8 +43,8 @@ export function ResourceList({
   }
   return (
     <div className="resource-list">
-      {items.map((resource) => (
-        <Link className="resource-row group" href={`/resources/${resource.id}?source=search`} prefetchOnIntent key={resource.id}>
+      {items.map((resource, index) => (
+        <Link className="resource-row group" href={`/resources/${resource.id}?source=search`} prefetchOnIntent prefetchWhenIdle={index < 3} key={resource.id}>
           <span className="row-handle" aria-hidden="true">⋮⋮</span>
           <span className="file-icon" aria-hidden="true">{fileLabel(resource.mimeType, resource.originalFilename)}</span>
           <div className="row-main">

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { NavigationLink as Link } from "@/src/components/navigation-link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -65,7 +65,7 @@ export default async function ResourcesPage({
           <div>
             <h1>Resources</h1>
           </div>
-          <Link className="button primary" href="/resources/new" prefetch={false}><span aria-hidden="true">＋</span> Upload resource</Link>
+          <Link className="button primary" href="/resources/new" prefetchOnIntent prefetchWhenIdle><span aria-hidden="true">＋</span> Upload resource</Link>
         </section>
         <Suspense key={JSON.stringify([tag, query, fileType])} fallback={<ResourceSearchSkeleton />}>
           <ResourceSearchContent user={user} filters={{ q: query, fileType, tag }} sessionMs={session.durationMs} recordTiming={recordTiming} />
