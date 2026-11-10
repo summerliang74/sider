@@ -18,7 +18,7 @@ Launchpad is restricted to SHSID students, so Sider treats a valid Launchpad ide
 
 ## Create Launchpad Variables
 
-The current Runway project stores all existing runtime values as encrypted uppercase secrets. The committed deploy file references them as `secret://KEY`; secret values are never written to the source snapshot or logs. For a new project, create the following names with the same build/runtime scopes before deploying:
+The current Runway project stores all existing runtime values as encrypted uppercase secrets. The committed deploy file references them as `secret://KEY`; discovery uses the existing `secret://LAUNCHPAD_ORG_DISCOVERY_EMAIL` alias and the upload limit uses the validated 50 MiB default when unset. Secret values are never written to the source snapshot or logs. For a new project, create the following names with the same build/runtime scopes before deploying:
 
 ```text
 APP_BASE_URL
@@ -104,4 +104,8 @@ The committed deploy file performs:
 
 Automatic rollback observes the release for five minutes. Database migrations are not automatically undone by a failed release, so every migration still needs a reviewed forward-fix or rollback procedure.
 
-The current legacy deployment uses a locally verified Next.js standalone archive. Include `scripts/launchpad-bootstrap.mjs` as the archive's `bootstrap.mjs`, and `scripts/upload-worker.mjs` as `upload-worker.mjs`. The bootstrap starts the standalone server and the upload worker together and shuts down if either child unexpectedly exits, so the platform restarts the complete service. Apply migration 0006 before this release. This additive migration can remain when rolling back to the previous application; do not delete queued jobs during an application rollback. Preserve the runtime environment when republishing a legacy project and verify all restored values without printing them.
+Source deployments run `npm start`, which supervises both Next.js and the upload worker. Generate the snapshot with `node scripts/package-launchpad.mjs <tag>`; it excludes the root Dockerfile and Compose file, which are intended for self-hosting and otherwise trigger the legacy Compose detector. The current CLI excludes `package-lock.json`; the packager converts the committed lock into npm's native `npm-shrinkwrap.json` in the snapshot and checks that its dependency tree is identical. The deployment pins npm 11.18.0 and keeps `npm ci` for deterministic installs. Publish the returned staging path to the existing project ID.
+
+A proxy 504 is not a terminal build result: use the Runway build/deployment view to follow the accepted operation before retrying. The 2026-11-10 release passed readiness and the production browser upload/automatic-scan/search/download check, with build `01M72TNAP3EX4FK590FMQ2ZE4A` and live deployment `01M72TVMA5FG2AHXP0QXNNTDPE`.
+
+For standalone archives, include `scripts/launchpad-bootstrap.mjs` as `bootstrap.mjs`, and `scripts/upload-worker.mjs` as `upload-worker.mjs`. Its bootstrap supervises both processes as well. Apply migration 0006 before this release. This additive migration can remain when rolling back to the previous application; do not delete queued jobs during an application rollback.
