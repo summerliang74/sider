@@ -7,7 +7,7 @@ import { hashOpaqueToken } from "@/src/lib/crypto";
 import { getServerEnv } from "@/src/lib/env";
 import { recordMetric } from "@/src/lib/telemetry";
 
-export type RateOperation = "page" | "oauth_start" | "oauth_callback" | "search" | "upload" | "upload_transfer" | "complete" | "download" | "resource_write" | "report" | "admin";
+export type RateOperation = "page" | "oauth_start" | "oauth_callback" | "search" | "upload" | "upload_transfer" | "upload_status" | "complete" | "download" | "resource_write" | "report" | "admin";
 
 const limits: Record<RateOperation, { user?: number; ip: number; windowSeconds: number }> = {
   page: { ip: 600, windowSeconds: 60 },
@@ -16,6 +16,7 @@ const limits: Record<RateOperation, { user?: number; ip: number; windowSeconds: 
   search: { user: 60, ip: 120, windowSeconds: 60 },
   upload: { user: 10, ip: 30, windowSeconds: 3600 },
   upload_transfer: { user: 12, ip: 40, windowSeconds: 3600 },
+  upload_status: { user: 30, ip: 240, windowSeconds: 60 },
   complete: { user: 20, ip: 60, windowSeconds: 3600 },
   download: { user: 120, ip: 300, windowSeconds: 3600 },
   resource_write: { user: 60, ip: 180, windowSeconds: 3600 },

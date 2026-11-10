@@ -25,6 +25,12 @@
   font-synthesis: none;
 }
 
+.upload-fields { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 20px; }
+.upload-queue { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.upload-queue-item { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 16px; overflow-wrap: anywhere; }
+.upload-queue-item small { display: block; color: var(--muted); }
+.upload-queue-item progress { width: 100%; accent-color: var(--green); }
+.upload-item-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 * { box-sizing: border-box; }
 html { min-width: 320px; background: var(--canvas); }
 body { margin: 0; font-size: 14px; line-height: 1.57; background: var(--canvas); }

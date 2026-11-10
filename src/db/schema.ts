@@ -4,6 +4,7 @@ import {
   boolean,
   customType,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -134,6 +135,21 @@ export const resources = pgTable(
     index("resources_search_text_trgm_idx").using("gin", table.searchText.asc().op("gin_trgm_ops")),
   ],
 );
+
+export const uploadScanJobs = pgTable("upload_scan_jobs", {
+  resourceId: uuid("resource_id").primaryKey().references(() => resources.id, { onDelete: "cascade" }),
+  sourceKey: text("source_key").notNull(),
+  snapshotKey: text("snapshot_key").notNull(),
+  status: text("status", { enum: ["queued", "processing", "done", "failed"] }).notNull().default("queued"),
+  attempts: integer("attempts").notNull().default(0),
+  availableAt: timestamp("available_at", { withTimezone: true }).notNull().defaultNow(),
+  leaseToken: uuid("lease_token"),
+  leaseUntil: timestamp("lease_until", { withTimezone: true }),
+  lastError: text("last_error"),
+  sourceDeletedAt: timestamp("source_deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("upload_scan_jobs_due_idx").on(table.status, table.availableAt)]);
 
 export const resourceReports = pgTable(
   "resource_reports",

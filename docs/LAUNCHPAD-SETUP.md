@@ -18,7 +18,7 @@ Launchpad is restricted to SHSID students, so Sider treats a valid Launchpad ide
 
 ## Create Launchpad Variables
 
-Create project variables with these exact reference names:
+The current Runway project stores all existing runtime values as encrypted uppercase secrets. The committed deploy file references them as `secret://KEY`; secret values are never written to the source snapshot or logs. For a new project, create the following names with the same build/runtime scopes before deploying:
 
 ```text
 APP_BASE_URL
@@ -63,7 +63,7 @@ Discovery does not create a user, persist the profile, or issue an application s
 
 ## Create Launchpad Secrets
 
-Create project secrets with these exact references:
+Legacy installations may still use these older project-scoped secret aliases. Do not create duplicate aliases for the current project; its reviewed uppercase `secret://KEY` references are authoritative:
 
 ```text
 secret://project/session-secret
@@ -103,3 +103,5 @@ The committed deploy file performs:
 5. readiness probing at `/api/health`
 
 Automatic rollback observes the release for five minutes. Database migrations are not automatically undone by a failed release, so every migration still needs a reviewed forward-fix or rollback procedure.
+
+The current legacy deployment uses a locally verified Next.js standalone archive. Include `scripts/launchpad-bootstrap.mjs` as the archive's `bootstrap.mjs`, and `scripts/upload-worker.mjs` as `upload-worker.mjs`. The bootstrap starts the standalone server and the upload worker together and shuts down if either child unexpectedly exits, so the platform restarts the complete service. Apply migration 0006 before this release. This additive migration can remain when rolling back to the previous application; do not delete queued jobs during an application rollback. Preserve the runtime environment when republishing a legacy project and verify all restored values without printing them.

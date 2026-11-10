@@ -18,7 +18,7 @@ export default async function NewResourcePage() {
           <section className="upload-main">
             <h1>Upload a resource</h1>
             <p className="upload-intro">Add a useful file to the shared shelf. Every upload is validated and scanned before other students can see it.</p>
-            {uploadsEnabled ? <UploadForm isAdmin={user.role === "admin"} /> : <div className="empty"><h2>Uploads temporarily unavailable</h2><p>The malware scanning service has not been configured. Sign-in and existing resources remain available, but new files cannot be accepted safely.</p></div>}
+            {uploadsEnabled ? <UploadForm isAdmin={user.role === "admin"} maxBytes={getServerEnv().UPLOAD_MAX_BYTES} /> : <div className="empty"><h2>Uploads temporarily unavailable</h2><p>The malware scanning service has not been configured. Sign-in and existing resources remain available, but new files cannot be accepted safely.</p></div>}
           </section>
           <aside className="upload-guidance">
             <h2>Make it useful, safe, and easy to find.</h2>

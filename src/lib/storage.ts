@@ -79,7 +79,38 @@ export async function headObject(objectKey: string) {
     contentLength: result.ContentLength,
     contentType: result.ContentType,
     resourceId: result.Metadata?.resource,
+    etag: result.ETag,
   };
+}
+
+export async function createUploadUrl(input: { objectKey: string; resourceId: string; mimeType: string; sizeBytes: number }) {
+  const expiresIn = 300;
+  const command = new PutObjectCommand({
+    Bucket: getServerEnv().S3_BUCKET,
+    Key: input.objectKey,
+    ContentType: input.mimeType,
+    ContentLength: input.sizeBytes,
+    Metadata: { resource: input.resourceId },
+  });
+  const url = await getSignedUrl(client(), command, {
+    expiresIn,
+    signableHeaders: new Set(["content-type", "content-length"]),
+    unhoistableHeaders: new Set(["x-amz-meta-resource"]),
+  });
+  return { url, expiresIn, headers: { "content-type": input.mimeType, "x-amz-meta-resource": input.resourceId } };
+}
+
+// The upload URL can be reused until expiry. Scan only a server-owned copy,
+// never the still-writable ingress object. If it changed after HEAD, fail closed.
+export async function copyObject(sourceKey: string, targetKey: string, etag?: string): Promise<void> {
+  const env = getServerEnv();
+  await client().send(new CopyObjectCommand({
+    Bucket: env.S3_BUCKET,
+    Key: targetKey,
+    CopySource: [env.S3_BUCKET, ...sourceKey.split("/")].map(encodeURIComponent).join("/"),
+    ...(etag ? { CopySourceIfMatch: etag } : {}),
+    MetadataDirective: "COPY",
+  }));
 }
 
 export async function createDownloadUrl(input: {

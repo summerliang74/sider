@@ -20,3 +20,14 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+  upload-worker:
+    image: shsid-online:latest
+    env_file:
+      - .env.production
+    environment:
+      UPLOAD_WORKER_BASE_URL: http://app:3000
+    command: ["node", "scripts/upload-worker.mjs"]
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped

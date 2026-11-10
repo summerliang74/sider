@@ -1,10 +1,12 @@
 # SHSID Online 产品需求文档（PRD）
 
-> 文档状态：Draft v0.6（与 MVP 当前实现同步）
-> 更新日期：2026-11-02
+> 文档状态：Draft v0.7（直传与异步扫描实现基线）
+> 更新日期：2026-11-10
 > 第一阶段：Resource Hub + Launchpad 登录/鉴权  
 > 技术基线：Launchpad 托管 Next.js + React + TypeScript 应用、HTTPS 生产域名和同源 `/dashboard-api/` bridge；UCloud ULHost 只承载独立扫描服务，另接 PostgreSQL、私有 S3 兼容对象存储、共享限流存储与边缘 WAF/DDoS 防护
 > 已选定方案：Launchpad 计算层 + Launchpad 官方浏览器 SDK 管理 OIDC Code/PKCE + 服务端 `userinfo` 准入 + 本站服务端会话
+
+> 2026-11-10 变更依据：用户确认“文件直传 + 后台扫描 + 独立上传队列”后要求修改、测试并核对 PRD。本版同步原有单文件/中转/同步扫描条款；保留未验收的外部服务、浏览器和性能目标，不因代码测试通过标记 M0 完成。验收证据见 `docs/UPLOAD-PERFORMANCE-ACCEPTANCE.md`。
 
 ## 1. 项目概述
 
@@ -37,7 +39,7 @@ Q&A 和实时 Communication 在后续阶段实现，不进入第一阶段的开�
 - 仅允许持有有效 Launchpad 身份且未被本站封禁的用户进入网站；
 - 用户能够在 3 分钟内完成一次资源发布；
 - 用户能够通过关键词找到相关资源并安全下载；
-- 上传经受保护的 Next.js 接口流式写入私有对象存储；下载使用短时效预签名 URL 直达对象存储；MVP 不提供在线文件预览；
+- 上传使用预签名 PUT 直达私有对象存储，持久化后台任务扫描专用快照；下载使用短时效预签名 GET；MVP 不提供在线文件预览；
 - 任何用户上传的文件在对其他学生可见前必须通过恶意软件扫描；
 - 通过边缘 DDoS 防护、应用层限流和风险自适应机器人检查，防止自动化滥用拖垮鉴权、搜索、上传或下载服务；
 - 管理员能够隐藏违规资源、处理举报，并保留必要的审计信息。
@@ -186,20 +188,20 @@ MVP 建议先使用 PostgreSQL Full Text Search 配合 `pg_trgm`，避免过早�
 
 | ID | 优先级 | 需求 |
 |---|---|---|
-| UPLOAD-01 | P0 | 用户填写标题、描述、可选标签并选择单个文件。 |
+| UPLOAD-01 | P0 | 用户填写共享标题、描述和标签，单批选择 1–5 个文件；每个文件创建独立资源，最多 2 个并行传输，独立进度、取消和重试；单文件失败不阻断整批。 |
 | UPLOAD-02 | P0 | 标题 1–120 字符；描述最多 2,000 字符；标签最多 10 个、每个最多 30 字符。 |
 | UPLOAD-03 | P0 | MVP 单文件最大 50 MB，该值必须可通过环境配置调整。 |
 | UPLOAD-04 | P0 | 默认允许 PDF、DOCX、PPTX、XLSX、TXT、PNG、JPG/JPEG；拒绝可执行文件、脚本、宏文件和压缩包。 |
-| UPLOAD-05 | P0 | 服务端创建 `pending` 记录和不可预测的 object key，再返回短时效本站上传 URL；对象存储写凭据不暴露给浏览器。 |
-| UPLOAD-06 | P0 | 浏览器 `PUT` 到本站受保护上传接口；接口重新校验同源、会话、资源所有权、意图时效、Content-Length 和 Content-Type，并以流方式写入私有对象存储，不在应用内存中缓冲完整文件。 |
-| UPLOAD-07 | P0 | 上传完成后调用 complete 接口；服务端通过对象存储 HEAD 检查对象是否存在、大小是否一致、Content-Type 是否允许。 |
-| UPLOAD-08 | P0 | HEAD 校验通过后资源进入 `scanning`，只有扫描通过才可进入 `active`；失败或超时始终不可见。 |
+| UPLOAD-05 | P0 | 服务端鉴权并创建 pending 记录和不可预测 object key，签发 300 秒预签名 PUT，绑定对象、大小、类型和资源标识；长期对象存储凭据仅留服务端。 |
+| UPLOAD-06 | P0 | 浏览器直接 PUT 到私有对象存储。本站流式上传接口仅保留为旧客户端兼容路径，仍校验同源、会话、所有权、时效、大小和类型。 |
+| UPLOAD-07 | P0 | complete 校验作者、意图时效及对象 HEAD，以 ETag 条件复制到服务端专用快照并再次核验，在单个数据库事务中切换 scanning 并插入唯一扫描任务。 |
+| UPLOAD-08 | P0 | 完成接口快速返回 202/scanning，扫描由持久化后台任务处理。页面可离开并在我的资源查看结果；仅扫描通过才可进入 active。 |
 | UPLOAD-09 | P0 | object key 与用户提交的原始文件名分离；原始文件名仅作为经过清理的展示元数据。 |
-| UPLOAD-10 | P0 | 防止重复提交 complete；整个完成操作必须幂等。 |
-| UPLOAD-11 | P0 | 文件进入 `scanning` 状态，经恶意软件扫描通过后才能进入 `active`；扫描失败、不可用或超时时进入隔离状态，禁止 fail-open。 |
+| UPLOAD-10 | P0 | complete、任务领取和完成均幂等。任务具备 5 分钟租约及唯一 token；进程重启后可回收，过期 worker 不得写回发布结果。 |
+| UPLOAD-11 | P0 | 临时扫描/依赖错误最多尝试 3 次，间隔 30/60 秒，期间保持不可下载；恶意文件或类型不符立即隔离，重试耗尽后隔离。扫描与发布绑定同一快照，取消/删除后不得复活。 |
 | UPLOAD-12 | P1 | 计算并保存 SHA-256，用于重复文件提示和安全追踪。 |
 | UPLOAD-13 | P0 | 对过期 `pending/` 对象同时使用应用对账清理与对象存储 Lifecycle 规则；若采用 multipart upload，还必须自动终止未完成分片。 |
-| UPLOAD-14 | P0 | 反向代理对上传路径关闭请求体缓冲，body size 略高于应用上限，并配置覆盖最慢允许上传的发送/读取超时；上线前完成 50 MB 边界和并发测试。 |
+| UPLOAD-14 | P0 | 上线前验证预签名 PUT/CORS、50 MiB 边界、双文件并发、失败恢复、源对象覆盖及 worker 重启；应用不转发新客户端的文件正文。 |
 
 扫描是向普通学生开放前的强制门槛。在扫描未完成前，只允许小规模、明确授权且不含真实敏感资料的技术验证，不得作为学生内测发布。
 
@@ -293,14 +295,14 @@ OAuth 防护边界与执行顺序：
 
 ### 8.2 上传流程
 
-1. 客户端提交文件名、大小、Content-Type 和资源元数据。
-2. 服务端校验权限、频率、字段、文件类型和大小。
-3. 服务端创建 `pending` 资源，生成 object key 和短时效本站上传 URL。
-4. 客户端 `PUT` 到受保护的本站接口；接口复核意图并把请求体流式写入私有对象存储。
-5. 客户端调用 complete 接口。
-6. 服务端 HEAD 校验对象；通过后必须进入 `scanning`。
-7. 扫描通过后进入 `active`；失败或超时进入 `quarantined`。
-8. 客户端在扫描期间显示处理状态，激活后跳转资源详情。
+1. 用户选择 1–5 个文件并提交共享标题、描述和标签，每个文件独立创建上传意图。
+2. 服务端依次校验粗限流、会话、用户状态、用户限流、挑战及字段/类型/大小，再签发 300 秒、限定对象的预签名 PUT。
+3. 浏览器最多并行传输 2 个文件到私有对象存储，展示各文件进度，单独重试或取消。
+4. 上传后调用幂等 complete；服务端核验 HEAD，以 ETag 条件复制到不可由浏览器写入的快照并再次核验。
+5. 在一个数据库事务内将资源置为 scanning、绑定快照并插入唯一任务，接口返回 202；用户可以离开页面。
+6. 独立 worker 从 PostgreSQL 领取任务，持有 5 分钟租约，全局正常扫描并发为 1；崩溃后回收租约，旧 token 不得提交。
+7. worker 扫描快照，通过后只发布该快照内容；短暂故障有界重试，恶意文件/类型不符/重试耗尽进入隔离。删除与封禁不允许发布。
+8. 上传页批量查询本人状态，我的资源自动刷新；所有未通过扫描的内容均不可搜索或下载。
 
 ### 8.3 下载流程
 
@@ -316,7 +318,7 @@ OAuth 防护边界与执行顺序：
 | `/login` | 产品说明、Launchpad 登录按钮、隐私/条款入口、登录错误提示 |
 | `/resources` | 主搜索框、上传入口、搜索结果或最近资源、分页/加载更多 |
 | `/resources?tag=PA` | 统一资源库按 PA 标签筛选；旧 collection=peer-advisors 链接兼容映射至 PA，不显示独立栏目 |
-| `/resources/new` | 文件选择、标题、描述、标签、上传进度和错误恢复 |
+| `/resources/new` | 1–5 文件选择、共享标题/描述/标签、独立进度/取消/重试、后台扫描状态 |
 | `/resources/[id]` | 资源元数据、下载、举报；作者可编辑/删除 |
 | `/me/resources` | 当前用户上传的 pending、scanning、active、hidden、quarantined、failed 和 deleted 资源；保留各状态原义，提供 All / Active / Scanning / Unavailable 筛选，Scanning 筛选包含 pending |
 | `/admin/reports` | 举报队列、资源状态、处理动作和原因 |
@@ -354,7 +356,7 @@ flowchart LR
 - Launchpad 部署单元承载 Next.js、HTTPS 域名和同源 OAuth bridge；UCloud 部署单元只承载独立扫描容器；持久状态和文件使用外部 PostgreSQL 与 S3 兼容存储；
 - 外部 PostgreSQL 存储用户、会话、资源元数据、举报和审计记录；
 - 使用 Drizzle ORM 管理 schema 和 migration（原始需求中的 “prizzle” 按 Drizzle 理解）；
-- 文件只持久化在 S3 兼容对象存储中，bucket 默认为 private；上传正文可流经反向代理和 Next.js，但不得持久化到应用磁盘；
+- 文件只持久化在私有对象存储中；新客户端直传，不占用应用文件传输连接；
 - 服务端掌握 S3 凭据，仅向已鉴权用户签发单次用途、短时效 URL；
 - 定时任务对账并清理过期 `pending` 记录、孤儿对象和软删除对象；对象存储同时为 `pending/` 前缀配置 Lifecycle 兜底；
 - 本地开发使用未提交的 `.env.local`；应用生产密钥和连接串由 Launchpad 环境变量提供，扫描服务密钥由 UCloud 容器 Secrets 提供，均不进入仓库、镜像或构建产物。
@@ -372,6 +374,7 @@ flowchart LR
 | 限流 | `RATE_LIMIT_URL`、`RATE_LIMIT_TOKEN` | 共享原子存储；token 仅服务端可见 |
 | 机器人检查 | `NEXT_PUBLIC_BOT_SITE_KEY`、`BOT_VERIFY_URL`、`BOT_VERIFY_SECRET` | 只有 site key 可公开；verify secret 仅服务端可见 |
 | 恶意软件扫描 | `MALWARE_SCAN_URL`、`MALWARE_SCAN_TOKEN` | 仅服务端可见；配置明确超时 |
+| 上传 worker | `UPLOAD_WORKER_BASE_URL`、`CRON_SECRET` | 独立受管理进程；密钥仅服务端可见，非本机/Compose 服务地址必须 HTTPS |
 | Launchpad 运行环境 | `SHSID_LAUNCHPAD_OIDC_DEV=0` | 生产强制值，禁止开发 origin 覆盖 |
 
 配置管理规则：
@@ -460,6 +463,13 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 - `created_at`、`updated_at`、`published_at`、`deleted_at`、`object_deleted_at`
 - 搜索向量与必要的 GIN/GiST 索引
 
+### `upload_scan_jobs`
+
+- resource_id 唯一外键，与资源状态变更在同一事务写入。
+- source_key、snapshot_key：入站对象和仅服务端可写快照。
+- status、attempts、available_at、lease_token、lease_until：重试、租约和崩溃恢复。
+- last_error、source_deleted_at、created_at、updated_at：脱敏故障与重复副本清理记录。
+
 ### `resource_reports`
 
 - `id` UUID
@@ -489,9 +499,9 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 | `POST /api/auth/logout` | 撤销本站会话 |
 | `GET /api/me` | 返回最小化的当前用户资料 |
 | `GET /api/resources?q=&cursor=&sort=` | 搜索或获取最近资源 |
-| `POST /api/resources/upload-intents` | 创建 pending 记录并获得短时效本站上传 URL |
-| `PUT /api/resources/:id/upload` | 复核上传意图并将请求体流式写入私有对象存储 |
-| `POST /api/resources/:id/complete` | 校验对象并完成发布 |
+| `POST /api/resources/upload-intents` | 创建独立 pending 记录并获得 300 秒预签名 PUT |
+| `PUT /api/resources/:id/upload` | 旧客户端兼容上传；新客户端直接 PUT 到对象存储 |
+| `POST /api/resources/:id/complete` | 校验并冻结对象，原子入队，返回 202/scanning |
 | `GET /api/resources/:id` | 获取资源详情 |
 | `PATCH /api/resources/:id` | 作者或管理员编辑元数据 |
 | `DELETE /api/resources/:id` | 软删除资源 |
@@ -502,6 +512,8 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 | `POST /api/admin/resources/:id/moderate` | 隐藏、恢复或下架资源 |
 | `POST /api/admin/users/:id/suspend` | 封禁用户并撤销其全部本站会话 |
 | `GET /admin/audit` | 管理员查看最近审计记录 |
+| `POST /api/resources/upload-status` | 限流后批量查询本人最多 5 个资源状态 |
+| `POST /api/internal/jobs/uploads` | cron secret 保护，领取并处理一个持久化扫描任务 |
 | `POST /api/internal/jobs/cleanup` | 使用独立 cron secret 清理过期资源对象与会话 |
 | `GET /api/health`、`GET /api/internal/ready` | 公共存活检查与受保护就绪检查 |
 
@@ -534,7 +546,7 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 - 数据库 migration 可回滚或有明确的前向修复方案；
 - 生产环境定期备份 PostgreSQL，并验证恢复流程；
 - 对象存储上传中断可重试，complete 接口幂等；
-- 反向代理对上传路径关闭请求体缓冲；50 MB 边界和约定并发下不得先完整落盘或完整接收后再转发；
+- 直传需要真实浏览器的 CORS、签名和 50 MiB 边界验证；扫描任务可恢复，未通过扫描始终不可用；
 - 过期 `pending` 对象同时由应用对账任务和对象存储 Lifecycle 清理，并监控清理失败数量；
 - Launchpad 不可用时不得错误放行用户，应展示可重试状态；
 - 关键任务包含结构化日志和错误追踪，但日志须脱敏。
@@ -570,8 +582,8 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 
 ### 15.3 上传与下载
 
-- 合法用户能通过本站受保护上传接口提交一个受支持且不超过限制的文件；接口拒绝过期意图、非作者、大小/类型不匹配和缺少 Content-Length 的请求；
-- 上传正文由 Next.js 流式写入对象存储，反向代理不缓冲完整请求体，50 MB 边界与约定并发测试通过；
+- 合法用户可选择 1–5 个独立文件，通过预签名 PUT 直接上传；越权、过期、大小/类型不符及源对象竞争修改被拒绝；
+- 真实浏览器验证 CORS、签名绑定、50 MiB 边界和双文件并发；
 - 新上传文件在扫描完成前不会出现在搜索、详情或下载接口；扫描失败、不可用或超时时不会自动放行；
 - 超大文件、不允许的格式、伪造的 complete 请求和他人资源操作均被拒绝；
 - 未完成上传不会公开显示，并能被后台任务清理；
@@ -617,7 +629,7 @@ PostgreSQL 和 S3 对象存储可以独立部署；上述限制主要针对应�
 
 | 里程碑 | 交付内容 | 完成条件 |
 |---|---|---|
-| M0：技术验证 | Launchpad HTTPS 生产域名与 OAuth bridge；SDK callback、userinfo 和本站兼容会话；外部 PostgreSQL、应用中转上传、S3 GET、UCloud 扫描与清理；边缘/WAF、共享限流和机器人挑战；生产 Secrets 注入与轮换 | 在目标域名完成端到端 spike；确认 Launchpad 学生身份边界、会话风险接受、外部服务与凭据责任人；`SHSID_LAUNCHPAD_OIDC_DEV=0`；无关键未知项 |
+| M0：技术验证 | Launchpad HTTPS 生产域名与 OAuth bridge；SDK callback、userinfo 和本站兼容会话；外部 PostgreSQL、预签名直传、不可变快照、持久化扫描队列、S3 GET、UCloud 扫描与清理；边缘/WAF、共享限流和机器人挑战；生产 Secrets 注入与轮换 | 在目标域名完成端到端 spike；确认 OSS CORS、后台 worker、Launchpad 学生身份边界、会话风险接受、外部服务与凭据责任人；`SHSID_LAUNCHPAD_OIDC_DEV=0`；无关键未知项 |
 | M1：身份与骨架 | 登录/登出、本站会话、用户表、受保护路由、基础页面 | 鉴权验收用例通过 |
 | M2：Resource Hub | 上传、complete、搜索、详情、下载、我的资源 | 核心资源流程端到端通过 |
 | M3：安全与管理 | 举报、隐藏、封禁、边缘/WAF、共享限流、机器人挑战、审计、清理任务 | 安全与管理验收用例及压力/滥用演练通过 |

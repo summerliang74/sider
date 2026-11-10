@@ -19,7 +19,7 @@ vi.mock("@/src/lib/env", () => ({
   }),
 }));
 
-import { createDownloadUrl, getDownloadOrigin } from "./storage";
+import { createDownloadUrl, createUploadUrl, getDownloadOrigin } from "./storage";
 
 describe("download URLs", () => {
   beforeEach(() => {
@@ -45,5 +45,14 @@ describe("download URLs", () => {
 
   it("exposes the virtual-hosted download origin for browser preconnects", () => {
     expect(getDownloadOrigin()).toBe("https://sider-prod-upload.oss-cn-beijing.aliyuncs.com");
+  });
+  it("binds direct upload signatures to a single object, size, type and resource", async () => {
+    const result = await createUploadUrl({ objectKey: "pending/id/random", resourceId: "id", mimeType: "text/plain", sizeBytes: 25 });
+    const call = mocks.getSignedUrl.mock.calls[0]!;
+    expect(call[1].input).toMatchObject({ Key: "pending/id/random", ContentLength: 25, ContentType: "text/plain", Metadata: { resource: "id" } });
+    expect(call[2].signableHeaders).toEqual(new Set(["content-type", "content-length"]));
+    expect(call[2].expiresIn).toBe(300);
+    expect(result.headers).toEqual({ "content-type": "text/plain", "x-amz-meta-resource": "id" });
+    expect(JSON.stringify(result)).not.toContain("test-secret-key");
   });
 });

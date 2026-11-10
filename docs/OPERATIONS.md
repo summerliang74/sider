@@ -25,13 +25,23 @@ Start from the reviewed templates in `infra/s3-cors.example.json`, `infra/s3-lif
 
 CORS must allow only the production application origin, methods `PUT`, `GET`, and `HEAD`, and headers `content-type` and `x-amz-meta-resource`. Expose only headers the upload client requires.
 
-Files are first uploaded under `pending/`. A successful scan promotes them to `active/`; rejected files move to `quarantine/`. Configure lifecycle rules to:
+Files are uploaded directly under `pending/` with a 300-second signed PUT bound to one key, length, type and resource metadata. Complete creates a separate server-only `pending/<id>/snapshot-*` copy with an ETag precondition and queues it transactionally. A successful scan copies that snapshot to `active/`; rejected snapshots remain private and non-downloadable until pending retention removes them. Existing legacy `quarantine/` objects remain supported. Configure lifecycle rules to:
 
 - remove objects under `pending/` after two days as a safety net;
 - abort incomplete multipart uploads after one day;
 - never make an object public.
 
 Schedule `POST /api/internal/jobs/cleanup` every 15 minutes with `Authorization: Bearer <CRON_SECRET>`. The job marks stale pending rows failed and removes objects whose soft-delete recovery window has elapsed.
+
+Apply migration `0006_upload_scan_queue` before starting this version. Run the root Compose `upload-worker` service, or supervise `npm run worker:uploads` with `UPLOAD_WORKER_BASE_URL` pointing at the local app. The Launchpad standalone package uses `scripts/launchpad-bootstrap.mjs` as its `bootstrap.mjs` and includes `scripts/upload-worker.mjs` alongside it: the bootstrap supervises both app and worker, exits on unexpected child termination, and lets the managed container restart both. It polls every five seconds while idle and processes one task per HTTP request. Do not run it through an HTTP proxy with a timeout shorter than 180 seconds. Multiple workers are safe: database leases allow one active scanner job globally; an expired worker cannot commit. Queue/lease state survives app restarts. No request-scoped `after()` or fire-and-forget promise is used as the queue.
+
+Transient scan/dependency failures retry at 30 and 60 seconds; three failed attempts quarantine. A crash consumes an attempt, and a job found with three exhausted attempts is quarantined without another scan. Alert on the oldest queued task, scanner failure metrics, worker 503s, and absence of worker requests. A pending snapshot lifecycle of two days requires workers to recover well before that deadline.
+
+Cleanup skips resources with queued/processing jobs. For terminal jobs older than 15 minutes it removes ingress/snapshot/output duplicates while preserving the resource's current object key. It rechecks resource state under a database lock before deleting stale resources. Keep the lifecycle rule as a backstop for a crash before snapshot registration; it also handles an ingress recreated with an unexpired URL.
+
+Direct upload deployment gate: configure OSS CORS for the exact production origin, `PUT/GET/HEAD`, and `content-type,x-amz-meta-resource`. Do not wildcard the origin. `infra/s3-cors.example.json` is the provider-neutral template. The application identity intentionally lacks bucket-administration privileges; use the bucket operator's console to configure CORS. Confirm both allowed and denied browser preflights before rollout.
+
+Verification: `TEST_LIVE_STORAGE=1` with the production application origin runs `src/lib/storage-live.integration.test.ts`. It uses only unique synthetic pending keys, checks signed size/type, conditional-copy isolation, private reads and a 50 MiB upload, and removes its objects afterward. Database integration tests require an explicit `TEST_DATABASE_URL` plus matching `TEST_DATABASE_HOST` for an empty schema-only test branch; they never fall back to the application database. See `UPLOAD-PERFORMANCE-ACCEPTANCE.md` for this change's evidence and remaining gates.
 
 ## Redis REST and rate limits
 

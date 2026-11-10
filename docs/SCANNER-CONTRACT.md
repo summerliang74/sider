@@ -1,6 +1,6 @@
 # Malware scanner contract
 
-`MALWARE_SCAN_URL` is called synchronously after the application has verified the private S3 object with `HEAD` and atomically moved the resource from `pending` to `scanning`.
+`MALWARE_SCAN_URL` is called by a durable upload worker, independently of the browser's completion request. Completion verifies the ingress object with `HEAD`, conditionally copies it to a server-only snapshot, validates that snapshot, and atomically changes the resource to `scanning` while inserting `upload_scan_jobs`. The completion response is `202`.
 
 Request:
 
@@ -9,7 +9,7 @@ POST /scan
 Authorization: Bearer <MALWARE_SCAN_TOKEN>
 Content-Type: application/json
 
-{"resourceId":"<uuid>","objectKey":"pending/<uuid>/<random>"}
+{"resourceId":"<uuid>","objectKey":"pending/<uuid>/snapshot-<random>"}
 ```
 
 The scanner credential must be limited to reading the configured bucket/prefix. It must inspect file signatures, not only extensions or the browser-provided content type.
@@ -26,7 +26,11 @@ Rejected response:
 {"status":"infected","detectedMimeType":"application/x-executable","signature":"optional short identifier"}
 ```
 
-Scanner failures may return `{"status":"error"}` or a non-2xx status. Timeouts, invalid responses, mismatched types, and service errors all fail closed to `quarantined`.
+Scanner failures may return `{"status":"error"}` or a non-2xx status. Temporary failures remain non-downloadable in `scanning` and are retried up to three attempts, with 30/60 second backoff. The worker quarantines after exhaustion. Infected files and mismatched types are quarantined immediately. A clean response must include SHA-256 before publication.
+
+The worker scans only the immutable snapshot. A still-valid PUT URL can overwrite the ingress object, but never the snapshot or published key. Five-minute database leases allow recovery after a crash; a stale lease token cannot publish. The deterministic active key makes retry after a storage copy / database commit interruption safe. Deletion or suspension prevents publication.
+
+Run `npm run worker:uploads` beside the app, or use the `upload-worker` service in the root Compose file. It calls the cron-secret-protected `POST /api/internal/jobs/uploads` endpoint, processing one job per request. The database enforces one live scan lease across all app instances. The worker must be supervised and running before enabling uploads.
 
 ## Included implementation
 

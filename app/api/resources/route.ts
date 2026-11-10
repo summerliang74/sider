@@ -7,6 +7,7 @@ import { recordMetric } from "@/src/lib/telemetry";
 import { decodeResourceCursor } from "@/src/lib/resource-cursor";
 
 export async function GET(request: Request) {
+  const started = performance.now();
   try {
     const user = await authorizeResourceSearch(request, () => getCurrentUser(request));
     if (!user) return noStoreJson({ error: "unauthorized" }, { status: 401 });
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
     }
 
     const result = await listActiveResources(parsed.data);
-    recordMetric("search.completed", { hasQuery: parsed.data.q.length > 0, resultCount: result.items.length, hasNextPage: Boolean(result.nextCursor) });
+    recordMetric("search.completed", { hasQuery: parsed.data.q.length > 0, resultCount: result.items.length, hasNextPage: Boolean(result.nextCursor), durationMs: Math.round(performance.now() - started) });
     return noStoreJson({
       ...result,
       items: result.items.map((item) => ({
@@ -36,6 +37,7 @@ export async function GET(request: Request) {
       })),
     });
   } catch (error) {
+    recordMetric("search.failed", { durationMs: Math.round(performance.now() - started) });
     return securityErrorResponse(error) ?? noStoreJson({ error: "search_unavailable" }, { status: 503 });
   }
 }

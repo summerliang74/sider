@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/src/components/app-shell";
+import { UploadStatusRefresh } from "@/src/components/upload-status-refresh";
 import { getDatabase } from "@/src/db";
 import { resources } from "@/src/db/schema";
 import { getCurrentUser } from "@/src/lib/auth/session";
@@ -59,6 +60,7 @@ export default async function MyResourcesPage({
   return (
     <AppShell user={user} current="mine">
       <div className="content uploads-page">
+        <UploadStatusRefresh enabled={items.some((item) => item.status === "scanning")} />
         <section className="page-heading">
           <div>
             <h1>My uploads</h1>
