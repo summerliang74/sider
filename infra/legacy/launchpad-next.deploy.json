@@ -1,0 +1,66 @@
+{
+  "runtime": "auto",
+  "packageManager": "npm@11.18.0",
+  "installCommand": ["npm", "ci", "--no-audit", "--no-fund", "--prefer-offline"],
+  "buildCommand": ["npm", "run", "build:launchpad"],
+  "startCommand": ["npm", "start"],
+  "releaseCommand": ["npm", "run", "db:migrate"],
+  "healthPath": "/api/health",
+  "nodeVersion": ">=20.9 <25",
+  "ignore": [
+    ".env",
+    ".env.*",
+    ".agents",
+    ".codex",
+    ".runtime",
+    ".tmp",
+    "frontend-prototype",
+    "work",
+    "tsconfig.tsbuildinfo"
+  ],
+  "rollbackPolicy": {
+    "autoRollback": true,
+    "observationSeconds": 300
+  },
+  "environment": {
+    "build": [
+      {
+        "name": "NEXT_PUBLIC_BOT_SITE_KEY",
+        "source": "secret",
+        "ref": "secret://NEXT_PUBLIC_BOT_SITE_KEY"
+      }
+    ],
+    "runtime": [
+      { "name": "APP_BASE_URL", "source": "secret", "ref": "secret://APP_BASE_URL" },
+      { "name": "SESSION_SECRET", "source": "secret", "ref": "secret://SESSION_SECRET" },
+      { "name": "SESSION_TOKEN_PEPPER", "source": "secret", "ref": "secret://SESSION_TOKEN_PEPPER" },
+      { "name": "SESSION_TTL_SECONDS", "source": "secret", "ref": "secret://SESSION_TTL_SECONDS" },
+      { "name": "DATABASE_URL", "source": "secret", "ref": "secret://DATABASE_URL" },
+      { "name": "DATABASE_URL_UNPOOLED", "source": "secret", "ref": "secret://DATABASE_URL_UNPOOLED" },
+      { "name": "DATABASE_MAX_CONNECTIONS", "source": "secret", "ref": "secret://DATABASE_MAX_CONNECTIONS" },
+      { "name": "SHSID_ADMIN_SUBS", "source": "secret", "ref": "secret://SHSID_ADMIN_SUBS" },
+      { "name": "SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL", "source": "secret", "ref": "secret://LAUNCHPAD_ORG_DISCOVERY_EMAIL" },
+      { "name": "SHSID_LAUNCHPAD_OIDC_DEV", "source": "secret", "ref": "secret://SHSID_LAUNCHPAD_OIDC_DEV" },
+      { "name": "S3_ENDPOINT", "source": "secret", "ref": "secret://S3_ENDPOINT" },
+      { "name": "S3_REGION", "source": "secret", "ref": "secret://S3_REGION" },
+      { "name": "S3_BUCKET", "source": "secret", "ref": "secret://S3_BUCKET" },
+      { "name": "S3_ACCESS_KEY_ID", "source": "secret", "ref": "secret://S3_ACCESS_KEY_ID" },
+      { "name": "S3_SECRET_ACCESS_KEY", "source": "secret", "ref": "secret://S3_SECRET_ACCESS_KEY" },
+      { "name": "S3_FORCE_PATH_STYLE", "source": "secret", "ref": "secret://S3_FORCE_PATH_STYLE" },
+      { "name": "RATE_LIMIT_URL", "source": "secret", "ref": "secret://RATE_LIMIT_URL" },
+      { "name": "RATE_LIMIT_TOKEN", "source": "secret", "ref": "secret://RATE_LIMIT_TOKEN" },
+      { "name": "RATE_LIMIT_MULTIPLIER", "source": "secret", "ref": "secret://RATE_LIMIT_MULTIPLIER" },
+      { "name": "OAUTH_START_IP_LIMIT", "source": "secret", "ref": "secret://OAUTH_START_IP_LIMIT" },
+      { "name": "OAUTH_CALLBACK_IP_LIMIT", "source": "secret", "ref": "secret://OAUTH_CALLBACK_IP_LIMIT" },
+      { "name": "TRUSTED_CLIENT_IP_HEADER", "source": "secret", "ref": "secret://TRUSTED_CLIENT_IP_HEADER" },
+      { "name": "NEXT_PUBLIC_BOT_SITE_KEY", "source": "secret", "ref": "secret://NEXT_PUBLIC_BOT_SITE_KEY" },
+      { "name": "BOT_VERIFY_URL", "source": "secret", "ref": "secret://BOT_VERIFY_URL" },
+      { "name": "BOT_VERIFY_SECRET", "source": "secret", "ref": "secret://BOT_VERIFY_SECRET" },
+      { "name": "MALWARE_SCAN_URL", "source": "secret", "ref": "secret://MALWARE_SCAN_URL" },
+      { "name": "MALWARE_SCAN_TOKEN", "source": "secret", "ref": "secret://MALWARE_SCAN_TOKEN" },
+      { "name": "MALWARE_SCAN_TIMEOUT_MS", "source": "secret", "ref": "secret://MALWARE_SCAN_TIMEOUT_MS" },
+      { "name": "CRON_SECRET", "source": "secret", "ref": "secret://CRON_SECRET" },
+      { "name": "RESOURCE_DELETE_RETENTION_DAYS", "source": "secret", "ref": "secret://RESOURCE_DELETE_RETENTION_DAYS" }
+    ]
+  }
+}
