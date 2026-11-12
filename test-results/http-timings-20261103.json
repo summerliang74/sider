@@ -1,0 +1,72 @@
+[
+  {
+    "run": 1,
+    "path": "/api/health",
+    "status": 200,
+    "ttfb": 1163,
+    "total": 1167
+  },
+  {
+    "run": 1,
+    "path": "/api/me",
+    "status": 401,
+    "ttfb": 756,
+    "total": 757
+  },
+  {
+    "run": 2,
+    "path": "/api/health",
+    "status": 200,
+    "ttfb": 117,
+    "total": 117
+  },
+  {
+    "run": 2,
+    "path": "/api/me",
+    "status": 401,
+    "ttfb": 186,
+    "total": 186
+  },
+  {
+    "run": 3,
+    "path": "/api/health",
+    "status": 200,
+    "ttfb": 123,
+    "total": 124
+  },
+  {
+    "run": 3,
+    "path": "/api/me",
+    "status": 401,
+    "ttfb": 612,
+    "total": 612
+  },
+  {
+    "run": 4,
+    "path": "/api/health",
+    "status": 200,
+    "ttfb": 154,
+    "total": 154
+  },
+  {
+    "run": 4,
+    "path": "/api/me",
+    "status": 401,
+    "ttfb": 178,
+    "total": 178
+  },
+  {
+    "run": 5,
+    "path": "/api/health",
+    "status": 200,
+    "ttfb": 454,
+    "total": 454
+  },
+  {
+    "run": 5,
+    "path": "/api/me",
+    "status": 401,
+    "ttfb": 293,
+    "total": 293
+  }
+]

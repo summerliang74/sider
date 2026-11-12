@@ -1,0 +1,116 @@
+[
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T09:28:49.756Z",
+    "sessionMs": 163,
+    "tagsMs": 694,
+    "listMs": 322,
+    "page": "resources",
+    "dataMs": 857
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T09:28:50.618Z",
+    "sessionMs": 163,
+    "listMs": 149,
+    "page": "uploads",
+    "dataMs": 312
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T09:28:51.808Z",
+    "sessionMs": 158,
+    "tagsMs": 83,
+    "listMs": 297,
+    "page": "resources",
+    "dataMs": 455
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T09:28:52.783Z",
+    "sessionMs": 159,
+    "listMs": 149,
+    "page": "uploads",
+    "dataMs": 308
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T09:28:53.826Z",
+    "sessionMs": 158,
+    "tagsMs": 78,
+    "listMs": 298,
+    "page": "resources",
+    "dataMs": 456
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T09:28:54.818Z",
+    "sessionMs": 158,
+    "listMs": 148,
+    "page": "uploads",
+    "dataMs": 306
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T09:28:55.826Z",
+    "sessionMs": 157,
+    "tagsMs": 79,
+    "listMs": 298,
+    "page": "resources",
+    "dataMs": 456
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T09:28:56.670Z",
+    "sessionMs": 158,
+    "listMs": 149,
+    "page": "uploads",
+    "dataMs": 306
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T09:28:57.675Z",
+    "sessionMs": 164,
+    "tagsMs": 78,
+    "listMs": 296,
+    "page": "resources",
+    "dataMs": 460
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T09:28:58.562Z",
+    "sessionMs": 157,
+    "listMs": 149,
+    "page": "uploads",
+    "dataMs": 306
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T09:28:59.592Z",
+    "sessionMs": 157,
+    "tagsMs": 79,
+    "listMs": 296,
+    "page": "resources",
+    "dataMs": 453
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T09:29:00.476Z",
+    "sessionMs": 158,
+    "listMs": 148,
+    "page": "uploads",
+    "dataMs": 307
+  }
+]

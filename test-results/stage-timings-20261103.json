@@ -1,0 +1,512 @@
+{
+  "started": "2026-11-03T09:28:25.920Z",
+  "authenticated": true,
+  "samples": [
+    {
+      "at": "2026-11-03T09:28:50.815Z",
+      "path": "/me/resources",
+      "run": 1,
+      "clickToHeading": 768,
+      "requests": [
+        {
+          "path": "/figma/sider-mark.svg",
+          "status": 200,
+          "fromSW": false,
+          "responseStart": 188.74,
+          "requestStart": 0.209
+        },
+        {
+          "path": "/figma/nav-resource.svg",
+          "status": 200,
+          "fromSW": false,
+          "responseStart": 203.254,
+          "requestStart": 0.096
+        },
+        {
+          "path": "/figma/search.svg",
+          "status": 200,
+          "fromSW": false,
+          "responseStart": 209.275,
+          "requestStart": 0.07
+        },
+        {
+          "path": "/privacy",
+          "status": 200,
+          "fromSW": false,
+          "responseStart": 207.825,
+          "requestStart": 0.34
+        },
+        {
+          "path": "/terms",
+          "status": 200,
+          "fromSW": false,
+          "responseStart": 233.7,
+          "requestStart": 0.216
+        },
+        {
+          "path": "/me/resources",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 328.66,
+          "requestStart": 0.156
+        },
+        {
+          "path": "/privacy",
+          "status": 200,
+          "fromSW": false,
+          "responseStart": 221.207,
+          "requestStart": 0.302
+        },
+        {
+          "path": "/_next/static/chunks/2n5qeheznvl4u.js",
+          "status": 200,
+          "fromSW": false,
+          "responseStart": -1,
+          "requestStart": -1
+        },
+        {
+          "path": "/terms",
+          "status": 200,
+          "fromSW": false,
+          "responseStart": 255.39,
+          "requestStart": 0.252
+        },
+        {
+          "path": "/_next/static/chunks/3flmxmjtdlae2.js",
+          "status": 200,
+          "fromSW": false,
+          "responseStart": 183.132,
+          "requestStart": 0.299
+        },
+        {
+          "path": "/resources/:id",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 304.37,
+          "requestStart": 0.357
+        }
+      ],
+      "network": [
+        {
+          "path": "/figma/sider-mark.svg",
+          "type": "img",
+          "duration": 190,
+          "ttfb": 189,
+          "requestToFirstByte": 188,
+          "workerStart": 1169.5,
+          "transferSize": 300
+        },
+        {
+          "path": "/figma/nav-resource.svg",
+          "type": "img",
+          "duration": 205,
+          "ttfb": 204,
+          "requestToFirstByte": 203,
+          "workerStart": 1169.6000000000931,
+          "transferSize": 805
+        },
+        {
+          "path": "/figma/search.svg",
+          "type": "img",
+          "duration": 211,
+          "ttfb": 210,
+          "requestToFirstByte": 209,
+          "workerStart": 1169.8999999999069,
+          "transferSize": 786
+        },
+        {
+          "path": "/privacy",
+          "type": "fetch",
+          "duration": 209,
+          "ttfb": 208,
+          "requestToFirstByte": 207,
+          "workerStart": 1310.8000000000466,
+          "transferSize": 483
+        },
+        {
+          "path": "/terms",
+          "type": "fetch",
+          "duration": 236,
+          "ttfb": 235,
+          "requestToFirstByte": 233,
+          "workerStart": 1310.8999999999069,
+          "transferSize": 481
+        },
+        {
+          "path": "/me/resources",
+          "type": "fetch",
+          "duration": 518,
+          "ttfb": 329,
+          "requestToFirstByte": 329,
+          "workerStart": 1401.1999999999534,
+          "transferSize": 0
+        },
+        {
+          "path": "/privacy",
+          "type": "fetch",
+          "duration": 222,
+          "ttfb": 222,
+          "requestToFirstByte": 221,
+          "workerStart": 1521.8999999999069,
+          "transferSize": 2063
+        },
+        {
+          "path": "/terms",
+          "type": "fetch",
+          "duration": 257,
+          "ttfb": 256,
+          "requestToFirstByte": 255,
+          "workerStart": 1549,
+          "transferSize": 1960
+        },
+        {
+          "path": "/_next/static/chunks/2n5qeheznvl4u.js",
+          "type": "script",
+          "duration": 0,
+          "ttfb": 0,
+          "requestToFirstByte": 0,
+          "workerStart": 0,
+          "transferSize": 0
+        },
+        {
+          "path": "/_next/static/chunks/3flmxmjtdlae2.js",
+          "type": "script",
+          "duration": 185,
+          "ttfb": 184,
+          "requestToFirstByte": 183,
+          "workerStart": 1920,
+          "transferSize": 1279
+        },
+        {
+          "path": "/resources/:id",
+          "type": "fetch",
+          "duration": 305,
+          "ttfb": 305,
+          "requestToFirstByte": 304,
+          "workerStart": 2118.3000000000466,
+          "transferSize": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T09:28:51.930Z",
+      "path": "/resources",
+      "run": 1,
+      "clickToHeading": 793,
+      "requests": [
+        {
+          "path": "/resources/:id",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 190.316,
+          "requestStart": 0.197
+        },
+        {
+          "path": "/resources",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 251.205,
+          "requestStart": 0.092
+        }
+      ],
+      "network": [
+        {
+          "path": "/resources/:id",
+          "type": "fetch",
+          "duration": 191,
+          "ttfb": 191,
+          "requestToFirstByte": 190,
+          "workerStart": 2426.100000000093,
+          "transferSize": 0
+        },
+        {
+          "path": "/resources",
+          "type": "fetch",
+          "duration": 748,
+          "ttfb": 251,
+          "requestToFirstByte": 251,
+          "workerStart": 2460.5,
+          "transferSize": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T09:28:52.813Z",
+      "path": "/me/resources",
+      "run": 2,
+      "clickToHeading": 564,
+      "requests": [
+        {
+          "path": "/me/resources",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 226.148,
+          "requestStart": 0.159
+        }
+      ],
+      "network": [
+        {
+          "path": "/me/resources",
+          "type": "fetch",
+          "duration": 528,
+          "ttfb": 226,
+          "requestToFirstByte": 226,
+          "workerStart": 3576.3000000000466,
+          "transferSize": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T09:28:53.988Z",
+      "path": "/resources",
+      "run": 2,
+      "clickToHeading": 851,
+      "requests": [
+        {
+          "path": "/resources",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 212.136,
+          "requestStart": 0.146
+        }
+      ],
+      "network": [
+        {
+          "path": "/resources",
+          "type": "fetch",
+          "duration": 812,
+          "ttfb": 212,
+          "requestToFirstByte": 212,
+          "workerStart": 4463.300000000047,
+          "transferSize": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T09:28:54.831Z",
+      "path": "/me/resources",
+      "run": 3,
+      "clickToHeading": 532,
+      "requests": [
+        {
+          "path": "/me/resources",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 193.263,
+          "requestStart": 0.099
+        }
+      ],
+      "network": [
+        {
+          "path": "/me/resources",
+          "type": "fetch",
+          "duration": 505,
+          "ttfb": 194,
+          "requestToFirstByte": 193,
+          "workerStart": 5622.800000000047,
+          "transferSize": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T09:28:55.833Z",
+      "path": "/resources",
+      "run": 3,
+      "clickToHeading": 697,
+      "requests": [
+        {
+          "path": "/resources",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 194.823,
+          "requestStart": 0.245
+        }
+      ],
+      "network": [
+        {
+          "path": "/resources",
+          "type": "fetch",
+          "duration": 657,
+          "ttfb": 197,
+          "requestToFirstByte": 195,
+          "workerStart": 6477.5,
+          "transferSize": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T09:28:56.689Z",
+      "path": "/me/resources",
+      "run": 4,
+      "clickToHeading": 541,
+      "requests": [
+        {
+          "path": "/me/resources",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 234.479,
+          "requestStart": 0.137
+        }
+      ],
+      "network": [
+        {
+          "path": "/me/resources",
+          "type": "fetch",
+          "duration": 505,
+          "ttfb": 235,
+          "requestToFirstByte": 234,
+          "workerStart": 7474.300000000047,
+          "transferSize": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T09:28:57.700Z",
+      "path": "/resources",
+      "run": 4,
+      "clickToHeading": 693,
+      "requests": [
+        {
+          "path": "/resources",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 244.529,
+          "requestStart": 0.096
+        }
+      ],
+      "network": [
+        {
+          "path": "/resources",
+          "type": "fetch",
+          "duration": 658,
+          "ttfb": 245,
+          "requestToFirstByte": 244,
+          "workerStart": 8323.699999999953,
+          "transferSize": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T09:28:58.590Z",
+      "path": "/me/resources",
+      "run": 5,
+      "clickToHeading": 578,
+      "requests": [
+        {
+          "path": "/me/resources",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 237.859,
+          "requestStart": 0.141
+        }
+      ],
+      "network": [
+        {
+          "path": "/me/resources",
+          "type": "fetch",
+          "duration": 542,
+          "ttfb": 238,
+          "requestToFirstByte": 238,
+          "workerStart": 9341.399999999907,
+          "transferSize": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T09:28:59.617Z",
+      "path": "/resources",
+      "run": 5,
+      "clickToHeading": 712,
+      "requests": [
+        {
+          "path": "/resources",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 265.739,
+          "requestStart": 0.116
+        },
+        {
+          "path": "/figma/search.svg",
+          "status": 200,
+          "fromSW": false,
+          "responseStart": 217.755,
+          "requestStart": 0.289
+        }
+      ],
+      "network": [
+        {
+          "path": "/resources",
+          "type": "fetch",
+          "duration": 652,
+          "ttfb": 266,
+          "requestToFirstByte": 266,
+          "workerStart": 10241.100000000093,
+          "transferSize": 0
+        },
+        {
+          "path": "/figma/search.svg",
+          "type": "img",
+          "duration": 220,
+          "ttfb": 218,
+          "requestToFirstByte": 217,
+          "workerStart": 10903.600000000093,
+          "transferSize": 300
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T09:29:00.491Z",
+      "path": "/me/resources",
+      "run": 6,
+      "clickToHeading": 569,
+      "requests": [
+        {
+          "path": "/me/resources",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 232.9,
+          "requestStart": 0.116
+        }
+      ],
+      "network": [
+        {
+          "path": "/me/resources",
+          "type": "fetch",
+          "duration": 538,
+          "ttfb": 233,
+          "requestToFirstByte": 233,
+          "workerStart": 11258.899999999907,
+          "transferSize": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T09:29:01.488Z",
+      "path": "/resources",
+      "run": 6,
+      "clickToHeading": 686,
+      "requests": [
+        {
+          "path": "/resources",
+          "status": 200,
+          "fromSW": true,
+          "responseStart": 197.501,
+          "requestStart": 0.109
+        }
+      ],
+      "network": [
+        {
+          "path": "/resources",
+          "type": "fetch",
+          "duration": 654,
+          "ttfb": 198,
+          "requestToFirstByte": 197,
+          "workerStart": 12124.100000000093,
+          "transferSize": 0
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "finished": "2026-11-03T09:29:01.489Z"
+}

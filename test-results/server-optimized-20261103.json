@@ -1,0 +1,80 @@
+[
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T11:51:28.010Z",
+    "sessionMs": 158,
+    "listMs": 148,
+    "page": "uploads",
+    "dataMs": 307
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T11:51:28.288Z",
+    "sessionMs": 155,
+    "listMs": 148,
+    "page": "uploads",
+    "dataMs": 303
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T11:51:29.331Z",
+    "sessionMs": 151,
+    "tagsMs": 317,
+    "listMs": 354,
+    "page": "resources",
+    "dataMs": 505
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T11:51:30.517Z",
+    "sessionMs": 152,
+    "tagsMs": 76,
+    "listMs": 149,
+    "page": "resources",
+    "dataMs": 302
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T11:51:31.686Z",
+    "sessionMs": 152,
+    "tagsMs": 76,
+    "listMs": 150,
+    "page": "resources",
+    "dataMs": 302
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T11:51:32.772Z",
+    "sessionMs": 151,
+    "tagsMs": 75,
+    "listMs": 148,
+    "page": "resources",
+    "dataMs": 299
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T11:51:33.909Z",
+    "sessionMs": 149,
+    "tagsMs": 75,
+    "listMs": 149,
+    "page": "resources",
+    "dataMs": 298
+  },
+  {
+    "type": "metric",
+    "name": "page.timing",
+    "at": "2026-11-03T11:52:08.874Z",
+    "sessionMs": 152,
+    "tagsMs": 76,
+    "listMs": 148,
+    "page": "resources",
+    "dataMs": 301
+  }
+]

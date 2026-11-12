@@ -1,0 +1,225 @@
+{
+  "started": "2026-11-03T11:49:24.485Z",
+  "samples": [
+    {
+      "at": "2026-11-03T11:51:28.524Z",
+      "mode": "click",
+      "run": 1,
+      "path": "/me/resources",
+      "clickToHeading": 912,
+      "prefetchStatus": null,
+      "network": [
+        {
+          "duration": 587,
+          "ttfb": 274
+        },
+        {
+          "duration": 286,
+          "ttfb": 273
+        },
+        {
+          "duration": 582,
+          "ttfb": 277
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T11:51:29.580Z",
+      "mode": "click",
+      "run": 1,
+      "path": "/resources",
+      "clickToHeading": 789,
+      "prefetchStatus": null,
+      "network": [
+        {
+          "duration": 761,
+          "ttfb": 278
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T11:51:29.879Z",
+      "mode": "click",
+      "run": 2,
+      "path": "/me/resources",
+      "clickToHeading": 30,
+      "prefetchStatus": null,
+      "network": []
+    },
+    {
+      "at": "2026-11-03T11:51:30.773Z",
+      "mode": "click",
+      "run": 2,
+      "path": "/resources",
+      "clickToHeading": 635,
+      "prefetchStatus": null,
+      "network": [
+        {
+          "duration": 598,
+          "ttfb": 297
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T11:51:31.084Z",
+      "mode": "click",
+      "run": 3,
+      "path": "/me/resources",
+      "clickToHeading": 41,
+      "prefetchStatus": null,
+      "network": []
+    },
+    {
+      "at": "2026-11-03T11:51:31.866Z",
+      "mode": "click",
+      "run": 3,
+      "path": "/resources",
+      "clickToHeading": 524,
+      "prefetchStatus": null,
+      "network": [
+        {
+          "duration": 495,
+          "ttfb": 204
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T11:51:32.165Z",
+      "mode": "click",
+      "run": 4,
+      "path": "/me/resources",
+      "clickToHeading": 34,
+      "prefetchStatus": null,
+      "network": []
+    },
+    {
+      "at": "2026-11-03T11:51:33.007Z",
+      "mode": "click",
+      "run": 4,
+      "path": "/resources",
+      "clickToHeading": 586,
+      "prefetchStatus": null,
+      "network": [
+        {
+          "duration": 564,
+          "ttfb": 215
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T11:51:33.305Z",
+      "mode": "click",
+      "run": 5,
+      "path": "/me/resources",
+      "clickToHeading": 28,
+      "prefetchStatus": null,
+      "network": []
+    },
+    {
+      "at": "2026-11-03T11:51:34.160Z",
+      "mode": "click",
+      "run": 5,
+      "path": "/resources",
+      "clickToHeading": 584,
+      "prefetchStatus": null,
+      "network": [
+        {
+          "duration": 547,
+          "ttfb": 191
+        }
+      ]
+    },
+    {
+      "at": "2026-11-03T11:51:44.683Z",
+      "mode": "hover",
+      "run": 1,
+      "path": "/me/resources",
+      "clickToHeading": 37,
+      "prefetchStatus": "no_observed_response",
+      "network": []
+    },
+    {
+      "at": "2026-11-03T11:51:55.197Z",
+      "mode": "hover",
+      "run": 1,
+      "path": "/resources",
+      "clickToHeading": 45,
+      "prefetchStatus": "no_observed_response",
+      "network": []
+    },
+    {
+      "at": "2026-11-03T11:52:05.725Z",
+      "mode": "hover",
+      "run": 2,
+      "path": "/me/resources",
+      "clickToHeading": 33,
+      "prefetchStatus": "no_observed_response",
+      "network": []
+    },
+    {
+      "at": "2026-11-03T11:52:16.231Z",
+      "mode": "hover",
+      "run": 2,
+      "path": "/resources",
+      "clickToHeading": 31,
+      "prefetchStatus": "no_observed_response",
+      "network": []
+    },
+    {
+      "at": "2026-11-03T11:52:26.740Z",
+      "mode": "hover",
+      "run": 3,
+      "path": "/me/resources",
+      "clickToHeading": 32,
+      "prefetchStatus": "no_observed_response",
+      "network": []
+    },
+    {
+      "at": "2026-11-03T11:52:37.263Z",
+      "mode": "hover",
+      "run": 3,
+      "path": "/resources",
+      "clickToHeading": 32,
+      "prefetchStatus": "no_observed_response",
+      "network": []
+    },
+    {
+      "at": "2026-11-03T11:52:47.762Z",
+      "mode": "hover",
+      "run": 4,
+      "path": "/me/resources",
+      "clickToHeading": 29,
+      "prefetchStatus": "no_observed_response",
+      "network": []
+    },
+    {
+      "at": "2026-11-03T11:52:58.278Z",
+      "mode": "hover",
+      "run": 4,
+      "path": "/resources",
+      "clickToHeading": 33,
+      "prefetchStatus": "no_observed_response",
+      "network": []
+    },
+    {
+      "at": "2026-11-03T11:53:08.785Z",
+      "mode": "hover",
+      "run": 5,
+      "path": "/me/resources",
+      "clickToHeading": 35,
+      "prefetchStatus": "no_observed_response",
+      "network": []
+    },
+    {
+      "at": "2026-11-03T11:53:19.299Z",
+      "mode": "hover",
+      "run": 5,
+      "path": "/resources",
+      "clickToHeading": 39,
+      "prefetchStatus": "no_observed_response",
+      "network": []
+    }
+  ],
+  "errors": [],
+  "authenticatedReload": true
+}
