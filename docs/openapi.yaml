@@ -1,0 +1,1742 @@
+openapi: 3.1.0
+info:
+  title: Sider Java migration API
+  version: 1.1.0
+  description: >-
+    Contract for the Java/Spring Boot and vanilla HTML/CSS/JavaScript
+    implementation in backend/. Local verification and pending production gates
+    are recorded in JAVA-IMPLEMENTATION-STATUS.md; the Java release is not live.
+    See API-DESIGN.md and JAVA-MIGRATION-PRD.md. Same-origin production HTTPS is required. All
+    business responses use Cache-Control no-store. JSON inputs reject unknown
+    properties; queries reject unknown and duplicate single-valued parameters.
+    Default authentication is a verified HttpOnly cookie deployment.
+    CompatibilitySession is accepted instead only in explicit header-compat
+    deployments; no automatic fallback, conflicting credentials are rejected.
+    Internal jobs use a separate cron bearer credential. Business endpoints
+    never accept Launchpad bearer tokens as sessions and never redirect to
+    object storage.
+  x-json-request-max-bytes: 65536
+  x-string-length-unit: UTF-16 code units; opaque credentials are never trimmed or normalized
+servers:
+  - url: /
+    description: Same origin as the browser application
+security:
+  - SessionCookie: []
+tags:
+  - { name: Public }
+  - { name: Auth }
+  - { name: Resources }
+  - { name: Uploads }
+  - { name: Moderation }
+  - { name: Internal }
+x-conditional-security:
+  profile: header-compat
+  replacementFor: SessionCookie
+  scheme: CompatibilitySession
+  description: >-
+    Explicit deployment profile only. Same-origin service worker injects the
+    header without following cross-origin redirects; no headers to
+    bridge/storage.
+paths:
+  /api/admin/dashboard:
+    get:
+      operationId: getAdminDashboard
+      tags: [ Moderation ]
+      summary: Administrator-only resource and governance statistics
+      description: >-
+        Full-table current totals and UTC hourly/daily activity in one read-only
+        repeatable-read snapshot, using database time. No request traffic,
+        downloads, physical storage inventory, tokens or file contents are collected.
+        Deleted metadata is included in upload history and status breakdown;
+        current resource count/bytes exclude deleted. Rankings cover active resources.
+      parameters:
+        - name: range
+          in: query
+          schema: { type: string, enum: [24h, 7d, 30d], default: 7d }
+        - { $ref: '#/components/parameters/BotHeader' }
+      responses:
+        '200':
+          description: Current totals and zero-filled UTC activity buckets; current bucket is partial
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [range, generatedAt, summary, series, statuses, actions, tags, types]
+                properties:
+                  range: { type: string, enum: [24h, 7d, 30d] }
+                  generatedAt: { type: string, format: date-time }
+                  summary:
+                    type: object
+                    required: [totalResources, activeResources, totalUsers, openReports, resourceBytes, newResources, newUsers]
+                    properties:
+                      totalResources: { type: integer, minimum: 0 }
+                      activeResources: { type: integer, minimum: 0 }
+                      totalUsers: { type: integer, minimum: 0 }
+                      openReports: { type: integer, minimum: 0 }
+                      resourceBytes: { type: integer, minimum: 0 }
+                      newResources: { type: integer, minimum: 0 }
+                      newUsers: { type: integer, minimum: 0 }
+                  series:
+                    type: array
+                    minItems: 7
+                    maxItems: 30
+                    items:
+                      type: object
+                      required: [at, uploads, bytes, reports, handled]
+                      properties:
+                        at: { type: string, format: date-time }
+                        uploads: { type: integer, minimum: 0 }
+                        bytes: { type: integer, minimum: 0 }
+                        reports: { type: integer, minimum: 0 }
+                        handled: { type: integer, minimum: 0 }
+                  statuses: { $ref: '#/components/schemas/DashboardRanking' }
+                  actions: { $ref: '#/components/schemas/DashboardRanking' }
+                  tags: { $ref: '#/components/schemas/DashboardRanking' }
+                  types: { $ref: '#/components/schemas/DashboardRanking' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/health:
+    get:
+      operationId: getHealth
+      tags: [ Public ]
+      summary: Process liveness only
+      security: []
+      responses:
+        '200':
+          description: Process is alive; not a production acceptance check
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ status ]
+                properties:
+                  status: { const: ok }
+              example: { status: ok }
+  /api/config:
+    get:
+      operationId: getPublicConfig
+      tags: [ Public ]
+      summary: Allowlisted runtime configuration for static browser pages
+      description: No secrets, credentials, admin list or configurable remote SDK URL.
+      security: []
+      responses:
+        '200':
+          description: Public configuration; service permissions still enforced server-side
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicConfig' }
+              example:
+                botSiteKey: public-site-key
+                uploadMaxBytes: 52428800
+                maxFiles: 5
+                uploadConcurrency: 2
+                uploadsEnabled: true
+                sessionTransport: cookie
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/auth/launchpad/start:
+    get:
+      operationId: redirectLegacyLogin
+      tags: [ Auth ]
+      summary: Legacy entry redirects to the SDK login page
+      security: []
+      responses:
+        '302':
+          description: Redirect to same-origin /login
+          headers:
+            Location:
+              required: true
+              schema: { type: string, const: /login }
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+    post:
+      operationId: rejectLegacyLoginStart
+      tags: [ Auth ]
+      summary: Legacy server-driven OAuth flow is retired
+      security: []
+      responses:
+        '410':
+          description: Use the official same-origin browser SDK
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: sdk_required }
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/auth/launchpad/session:
+    post:
+      operationId: exchangeLaunchpadSession
+      tags: [ Auth ]
+      summary: Verify platform userinfo and establish a Sider session
+      description: >-
+        Same-origin JSON only. SDK owns Code/PKCE/state/nonce. After rate/bot
+        checks, reserve a domain-separated HMAC platform-token fingerprint using
+        shared Redis SET NX EX 3900 before userinfo; total exchange deadline is
+        60 seconds, session lifetime at most 3600. Repeat fingerprint within
+        that window returns 409 login_exchange_replayed. On unknown DB commit or
+        lost response retain reservation; reauthorize through SDK instead of
+        replaying. This is bounded replay protection, not lifetime single-use of
+        the token. Cookie mode sets HttpOnly cookie and never exposes the Sider
+        token in JSON. Compatibility mode exposes only a short-lived Sider
+        opaque token, not the platform token. Platform failure and replay-store
+        failure fail closed.
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+            example: { accessToken: opaque-platform-token, returnTo: /resources }
+      responses:
+        '200':
+          description: Session created according to explicitly configured transport
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+            Set-Cookie:
+              description: >-
+                Required in cookie mode. __Host-shsid_session with HttpOnly,
+                Secure, SameSite=Lax, Path=/, no Domain, lifetime <=3600s. Local
+                development uses shsid_session; header-compat omits cookie.
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: '#/components/schemas/CookieLoginResponse' }
+                  - { $ref: '#/components/schemas/CompatibilityLoginResponse' }
+              examples:
+                cookie:
+                  value:
+                    {
+                      sessionTransport: cookie,
+                      expiresAt: '2026-11-11T09:00:00Z',
+                      redirectUrl: /resources
+                    }
+                compatibility:
+                  value:
+                    {
+                      sessionTransport: header-compat,
+                      accessToken: opaque-sider-session-token,
+                      expiresAt: '2026-11-11T09:00:00Z',
+                      redirectUrl: /resources
+                    }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Platform token fingerprint already reserved; restart SDK
+            authentication
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: login_exchange_replayed }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        "413":
+          $ref: "#/components/responses/TooLarge"
+  /api/auth/logout:
+    post:
+      operationId: logout
+      tags: [ Auth ]
+      summary: Revoke current Sider session and clear its browser credential
+      description: >-
+        Accepts optional current session. Idempotent if already logged out. No
+        claim to revoke Launchpad global sessions. Compatibility client must
+        retain credential for the revocation request, then clear IndexedDB and
+        notify service worker. If request fails, local cleanup does not prove
+        server revocation. Replaces legacy 303 with JSON 200. Rate-limit only,
+        no interactive bot challenge.
+      security:
+        - SessionCookie: []
+        - {}
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+      responses:
+        '200':
+          description: Current session revoked or absent
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+            Set-Cookie:
+              description: Expire the current session cookie at Path=/ with matching security
+                attributes
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ redirectUrl ]
+                properties:
+                  redirectUrl: { type: string, const: /login }
+              example: { redirectUrl: /login }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/me:
+    get:
+      operationId: getCurrentUser
+      tags: [ Auth ]
+      summary: Current active user with role rechecked against server allowlist
+      responses:
+        '200':
+          description: Current user; no platform identity secrets
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ user ]
+                properties:
+                  user: { $ref: '#/components/schemas/CurrentUser' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/resources:
+    get:
+      operationId: searchResources
+      tags: [ Resources ]
+      summary: Search active resources with automatic relevance/newest ordering
+      description: >-
+        Page size 20. Nonempty trimmed q orders by score DESC, publishedAt DESC,
+        id DESC; empty q orders by publishedAt DESC, id DESC. No sort parameter.
+        Explicit tag overrides legacy collection; an empty supplied tag is
+        invalid. Cursor is bound to normalized q/type/effective tag. Only active
+        resources are searchable; search highlights are plain text segments,
+        never HTML.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 120, default: '' }
+          description: Trim before validating and searching
+        - name: type
+          in: query
+          schema: { $ref: '#/components/schemas/FileType' }
+        - name: tag
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 30 }
+        - name: collection
+          in: query
+          deprecated: true
+          schema: { type: string, enum: [ peer-advisors ] }
+          description: Alias for tag=PA only when tag is absent
+        - { $ref: '#/components/parameters/Cursor' }
+        - { $ref: '#/components/parameters/BotHeader' }
+      responses:
+        '200':
+          description: One page of active resources
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResourcePage' }
+              example: { items: [], nextCursor: null }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/resources/tags:
+    get:
+      operationId: listResourceTags
+      tags: [ Resources ]
+      summary: Suggested tags plus bounded active-resource tag discovery
+      description: >-
+        Suggested Notes, Revision, Worksheets, Guides, PA first; merge at most
+        500 discovered active tags case-insensitively. Canonicalize PA aliases.
+        Presence of PA does not grant students permission to assign it.
+      parameters:
+        - { $ref: '#/components/parameters/BotHeader' }
+      responses:
+        '200':
+          description: At most five suggested plus 500 discovered tags
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ tags ]
+                properties:
+                  tags:
+                    type: array
+                    maxItems: 505
+                    uniqueItems: true
+                    items: { type: string, minLength: 1, maxLength: 30 }
+              example: { tags: [ Notes, Revision, Worksheets, Guides, PA ] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/me/resources:
+    get:
+      operationId: listOwnResources
+      tags: [ Resources ]
+      summary: Paginated own uploads including deleted-state metadata
+      description: >-
+        Page size 20 ordered createdAt DESC,id DESC. SQL filters before paging.
+        all includes every status; scanning includes pending/scanning;
+        unavailable includes hidden/quarantined/deleted/failed. Deleted entries
+        cannot open detail, edit or download. Cursor binds user and status
+        group. Optional view=workspace reproduces the original UI window:
+        latest 100 own records in all states, filtered and counted by the client.
+        That view rejects cursor and non-default status and returns nextCursor=null.
+      parameters:
+        - name: view
+          in: query
+          schema: { type: string, const: workspace }
+        - name: status
+          in: query
+          schema: { type: string, enum: [ all, active, scanning, unavailable ], default: all }
+        - { $ref: '#/components/parameters/Cursor' }
+        - { $ref: '#/components/parameters/BotHeader' }
+      responses:
+        '200':
+          description: One page of own resource metadata
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnResourcePage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/resources/upload-intents:
+    post:
+      operationId: createUploadIntent
+      tags: [ Uploads ]
+      summary: Create one non-idempotent pending resource and direct PUT signature
+      description: >-
+        Per-file operation, no Idempotency-Key support. A lost response must not
+        trigger automatic POST replay; inspect own uploads or explicitly start a
+        new attempt. Files default <=50MiB, runtime max <=500MiB. Scanner
+        disabled means 503 uploads_disabled. PA aliases require admin. Extension
+        and MIME must match allowlist; service normalizes filename and tags.
+        Direct PUT URL expires after 300 seconds, binds size/type/resource
+        metadata. Its signed headers must be sent exactly. Browser supplies
+        Content-Length itself.
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UploadIntentRequest' }
+            example:
+              title: Biology revision
+              description: Term revision notes
+              tags: [ Revision ]
+              originalFilename: biology.pdf
+              sizeBytes: 1048576
+              mimeType: application/pdf
+      responses:
+        '201':
+          description: Pending resource created; no resource is published yet
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UploadIntentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/resources/upload-status:
+    post:
+      operationId: getUploadStatuses
+      tags: [ Uploads ]
+      summary: Read statuses of at most five own resource IDs
+      description: >-
+        Only own resources are returned; missing or other-owned IDs are omitted.
+        May include deleted. Does not sign downloads or imply publication.
+        Rate-limited polling only; no interactive bot challenge. Stop polling
+        terminal states, back off on failure and pause in hidden/offline tabs.
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [ ids ]
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 5
+                  uniqueItems: true
+                  items: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '200':
+          description: Statuses belonging to current user, order unspecified
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ items ]
+                properties:
+                  items:
+                    type: array
+                    maxItems: 5
+                    items: { $ref: '#/components/schemas/ResourceState' }
+              example:
+                items:
+                  - { id: '11373201-18b6-48fa-b8a7-41ba8c281736', status: scanning }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        "413":
+          $ref: "#/components/responses/TooLarge"
+  /api/resources/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    get:
+      operationId: getResource
+      tags: [ Resources ]
+      summary: Resource detail visible to this viewer
+      description: >-
+        Owner or admin can inspect any non-deleted state; others only active.
+        Deleted/missing/invalid UUID/unavailable returns the same 404.
+        Visibility of metadata does not grant download permission.
+      parameters:
+        - { $ref: '#/components/parameters/BotHeader' }
+      responses:
+        '200':
+          description: Resource metadata without internal storage keys
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ resource ]
+                properties:
+                  resource: { $ref: '#/components/schemas/ResourceDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    patch:
+      operationId: replaceResourceMetadata
+      tags: [ Resources ]
+      summary: Owner/admin replaces title, description and tags
+      description: >-
+        All three metadata fields required. No body/author/status replacement.
+        Only non-deleted resources; audit in same transaction. Last successful
+        commit wins; no If-Match/version column. Students cannot submit PA even
+        unchanged; may remove PA and save or ask admin. Bot action
+        resource_write.
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MetadataRequest' }
+      responses:
+        '200':
+          description: Resource metadata updated
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResourceStateEnvelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        "413":
+          $ref: "#/components/responses/TooLarge"
+    delete:
+      operationId: deleteOwnResource
+      tags: [ Resources ]
+      summary: Owner soft-deletes a resource and records audit
+      description: >-
+        Owner only, including an admin deleting their own upload. An admin
+        removing another user's upload must use moderate/remove with mandatory
+        reason. Repeated deletion or no ownership returns 404; reconcile own
+        list after unknown outcome. No object deletion in this request. Bot
+        action resource_write via x-bot-token header; no DELETE JSON body.
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+        - { $ref: '#/components/parameters/BotHeader' }
+      responses:
+        '200':
+          description: Soft-deleted; late workers cannot republish
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ status ]
+                properties:
+                  status: { const: deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/resources/{id}/upload:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    put:
+      operationId: uploadLegacyResourceBody
+      tags: [ Uploads ]
+      deprecated: true
+      summary: Short-term streaming compatibility; new frontend uses signed direct PUT
+      description: >-
+        Owner only, pending intent created <=5 minutes ago. Required
+        Content-Length and Content-Type must exactly match intent. Stream
+        bounded body without buffering whole file. Completes only storage
+        transfer; must still call complete and await scan. Runtime maximum
+        applies. Limits without bot UI. Disabled by default with 410
+        legacy_upload_disabled; requires explicit LEGACY_UPLOAD_ENABLED=true.
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+        - name: Content-Length
+          in: header
+          required: true
+          schema: { $ref: '#/components/schemas/SizeBytes' }
+      requestBody:
+        required: true
+        content:
+          application/pdf: { schema: { type: string, format: binary } }
+          application/vnd.openxmlformats-officedocument.wordprocessingml.document: { schema: { type: string, format: binary } }
+          application/vnd.openxmlformats-officedocument.presentationml.presentation: { schema: { type: string, format: binary } }
+          application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } }
+          text/plain: { schema: { type: string, format: binary } }
+          image/png: { schema: { type: string, format: binary } }
+          image/jpeg: { schema: { type: string, format: binary } }
+      responses:
+        '204':
+          description: Bytes stored, resource remains pending
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+        '410':
+          description: Legacy streaming compatibility is disabled
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: legacy_upload_disabled }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/resources/{id}/complete:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    post:
+      operationId: completeUpload
+      tags: [ Uploads ]
+      summary: Verify an immutable snapshot and atomically enqueue one scan
+      description: >-
+        Owner only, intent lifetime <=1h. HEAD validates exact
+        size/type/resource metadata/ETag, conditional copy creates server-only
+        snapshot and rechecks. CAS pending->scanning and unique job insert share
+        a DB transaction. Repeated/concurrent calls do not create another job;
+        scanning is 202, other existing owned states (including deleted) are
+        200. A 200 response is not evidence of success; inspect status. Unknown
+        DB commit must not delete possibly committed snapshot. No synchronous
+        scanning in request.
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BotRequest' }
+            example: {}
+      responses:
+        '202':
+          description: Resource is scanning, accepted or already queued
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ id, status ]
+                properties:
+                  id: { $ref: '#/components/schemas/Uuid' }
+                  status: { const: scanning }
+              example: { id: '11373201-18b6-48fa-b8a7-41ba8c281736', status: scanning }
+        '200':
+          description: Existing owned state other than scanning, without enqueueing again
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ id, status ]
+                properties:
+                  id: { $ref: '#/components/schemas/Uuid' }
+                  status: { type: string, enum: [ active, hidden, quarantined, deleted, failed ] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        "413":
+          $ref: "#/components/responses/TooLarge"
+  /api/resources/{id}/download:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    post:
+      operationId: signResourceDownload
+      tags: [ Resources ]
+      summary: Sign a 120-second attachment download for an active resource
+      description: >-
+        Recheck active state on every signature, including owner/admin requests.
+        Returns JSON URL instead of redirecting credential-bearing requests.
+        Previously issued URLs may remain usable until their 120-second expiry
+        after hiding, deletion, logout or suspension; no instant revocation
+        claim.
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BotRequest' }
+            example: {}
+      responses:
+        '200':
+          description: Temporary private-storage attachment URL, never persist or log
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DownloadResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        "413":
+          $ref: "#/components/responses/TooLarge"
+  /api/resources/{id}/reports:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    post:
+      operationId: reportResource
+      tags: [ Moderation ]
+      summary: Report another user's active resource
+      description: >-
+        At most one open report per resource/reporter, enforced by partial
+        unique index. Own/non-active/missing resource returns 404. Does not
+        change resource visibility. Do not automatically replay after unknown
+        outcome.
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportRequest' }
+            example: { reason: copyright_privacy, details: Contains personal contact information }
+      responses:
+        '201':
+          description: Open report created
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ report ]
+                properties:
+                  report:
+                    type: object
+                    additionalProperties: false
+                    required: [ id ]
+                    properties:
+                      id: { $ref: '#/components/schemas/Uuid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        "413":
+          $ref: "#/components/responses/TooLarge"
+  /api/admin/reports:
+    get:
+      operationId: listAdminReports
+      tags: [ Moderation ]
+      summary: Admin report queue and history
+      description: >-
+        Admin only. Fixed page size 100, createdAt ASC,id ASC. Default open.
+        Cursor binds administrator identity and status filter. Resource authorId
+        supports the existing suspend-author action without exposing platform
+        sub. Optional view=workspace returns the oldest 100 open reports without
+        pagination, rejecting cursor and non-default status.
+      parameters:
+        - name: view
+          in: query
+          schema: { type: string, const: workspace }
+        - name: status
+          in: query
+          schema: { type: string, enum: [ open, resolved, dismissed ], default: open }
+        - { $ref: '#/components/parameters/Cursor' }
+        - { $ref: '#/components/parameters/BotHeader' }
+      responses:
+        '200':
+          description: One report page
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/admin/reports/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    post:
+      operationId: dismissReport
+      tags: [ Moderation ]
+      summary: Admin dismisses an open report with a reason and audit
+      description: >-
+        Conditional open->dismissed update and audit share one transaction.
+        Already closed/missing reports return 404. Resolve is performed by the
+        resource moderation endpoint, not a client-supplied status field here.
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [ note ]
+              properties:
+                note: { type: string, minLength: 1, maxLength: 1000 }
+                botToken: { $ref: '#/components/schemas/BotToken' }
+      responses:
+        '200':
+          description: Report dismissed
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ status ]
+                properties:
+                  status: { const: dismissed }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        "413":
+          $ref: "#/components/responses/TooLarge"
+  /api/admin/resources/{id}/moderate:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    post:
+      operationId: moderateResource
+      tags: [ Moderation ]
+      summary: Admin hides, restores or removes a resource
+      description: >-
+        hide only active->hidden; restore only hidden->active; remove any
+        non-deleted->deleted. Cannot restore quarantined/failed/scanning files.
+        Resource update, optional matching open report resolution and audit are
+        atomic. Remove resolves ALL open reports on that resource. Hide/restore
+        with reportId resolves only matching open report; mismatched/closed
+        reportId does not block moderation and resolves nothing. Response lists
+        actual resolvedReportIds. Wrong resource state returns 404. No automatic
+        replay after unknown result. Mandatory reason for every governance
+        action.
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ModerationRequest' }
+            example: { action: hide, reason: Personal information requires review }
+      responses:
+        '200':
+          description: Resource state and matching reports updated with audit
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ status, resolvedReportIds ]
+                properties:
+                  status: { type: string, enum: [ hidden, active, deleted ] }
+                  resolvedReportIds:
+                    type: array
+                    uniqueItems: true
+                    items: { $ref: '#/components/schemas/Uuid' }
+              example: { status: hidden, resolvedReportIds: [] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        "413":
+          $ref: "#/components/responses/TooLarge"
+  /api/admin/users/{id}/suspend:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    post:
+      operationId: suspendUser
+      tags: [ Moderation ]
+      summary: Admin suspends an active user and revokes all their Sider sessions
+      description: >-
+        Active->suspended, all session revocations and audit share one
+        transaction. Cannot suspend yourself (409). Missing/already suspended
+        target returns 404. Existing signed storage URLs may live until expiry.
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [ reason ]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 1000 }
+                botToken: { $ref: '#/components/schemas/BotToken' }
+      responses:
+        '200':
+          description: Suspended, sessions revoked, audit persisted
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ status ]
+                properties:
+                  status: { const: suspended }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        "413":
+          $ref: "#/components/responses/TooLarge"
+  /api/admin/audit:
+    get:
+      operationId: listAdminAudit
+      tags: [ Moderation ]
+      summary: Admin reads sanitized audit entries
+      description: >-
+        Fixed page size 100, createdAt DESC,id DESC; cursor binds administrator.
+        Metadata contains allowlisted sanitized scalar values, no
+        token/URL/secret. System/deleted actor may have null actor. Read is
+        protected and rate-limited. Optional view=workspace returns the latest
+        200 audit entries with nextCursor=null and rejects cursor.
+      parameters:
+        - name: view
+          in: query
+          schema: { type: string, const: workspace }
+        - { $ref: '#/components/parameters/Cursor' }
+        - { $ref: '#/components/parameters/BotHeader' }
+      responses:
+        '200':
+          description: One audit page
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuditPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/internal/ready:
+    get:
+      operationId: getReadiness
+      tags: [ Internal ]
+      summary: Authenticated database, shared limiter and storage readiness probe
+      description: Does not certify scanner, OAuth, bot verifier or release acceptance.
+      security:
+        - CronBearer: []
+      responses:
+        '200':
+          description: All three dependency probes succeeded
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Readiness' }
+              example: { status: ready, services: { database: true, rateLimit: true, storage: true } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503':
+          description: One or more probes failed; no raw dependency error disclosed
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Readiness' }
+              example:
+                {
+                  status: degraded,
+                  services: { database: true, rateLimit: false, storage: true }
+                }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/internal/jobs/uploads:
+    post:
+      operationId: processNextUploadJob
+      tags: [ Internal ]
+      summary: Attempt at most one persistent upload-scan job
+      description: >-
+        Shared DB claim/lease coordinates worker and cron callers. processed
+        true means attempted, not published. committed false can mean lease lost
+        or conditional resource update rejected. Retryable external failures may
+        commit requeue (30/60 second backoff, max3 attempts); errors remain
+        hidden.
+      security:
+        - CronBearer: []
+      responses:
+        '200':
+          description: No available claim, or one attempt completed
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    additionalProperties: false
+                    required: [ processed ]
+                    properties:
+                      processed: { const: false }
+                  - type: object
+                    additionalProperties: false
+                    required: [ processed, committed ]
+                    properties:
+                      processed: { const: true }
+                      committed: { type: boolean }
+              examples:
+                idle: { value: { processed: false } }
+                attempted: { value: { processed: true, committed: true } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/internal/jobs/cleanup:
+    post:
+      operationId: cleanupExpiredArtifacts
+      tags: [ Internal ]
+      summary: Bounded safe cleanup of expired intents, copies and records
+      description: >-
+        At most 200 resource candidates and 200 completed jobs per run. Protect
+        live queued/processing job input. Recheck/retire eligible state in short
+        DB transaction, do object I/O outside transaction, acknowledge
+        conditionally. Object errors leave item retryable; never delete
+        potentially committed snapshots or clear an entire storage prefix. Cron
+        only, not browser API.
+      security:
+        - CronBearer: []
+      responses:
+        '200':
+          description: Counts of completed cleanup actions, not guaranteed empty storage
+          headers:
+            Cache-Control: { $ref: '#/components/headers/NoStore' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CleanupResult' }
+              example:
+                {
+                  inspected: 4,
+                  cleaned: 3,
+                  artifactsCleaned: 2,
+                  expiredTransactions: 0,
+                  expiredSessions: 8
+                }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-shsid_session
+      description: >-
+        Opaque Sider session with HttpOnly, Secure, SameSite=Lax, Path=/, no
+        Domain. Maximum 3600 seconds. localhost development uses shsid_session
+        instead. Default only after end-to-end proxy Set-Cookie verification.
+    CompatibilitySession:
+      type: apiKey
+      in: header
+      name: x-sider-session
+      description: >-
+        Conditional alternative in explicit header-compat profile only;
+        same-origin IndexedDB/service-worker transport, never Web Storage. Must
+        not follow cross-origin redirect carrying this header. Not accepted
+        implicitly.
+    CronBearer:
+      type: http
+      scheme: bearer
+      description: CRON_SECRET, not a user or platform access token; server operators only
+  headers:
+    NoStore:
+      required: true
+      schema: { type: string, const: no-store }
+      description: Sensitive API responses are never cacheable
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+      description: Invalid UUID or inaccessible target maps to target-specific 404
+    Origin:
+      name: Origin
+      in: header
+      required: true
+      schema: { type: string, format: uri }
+      description: >-
+        Exact APP_BASE_URL origin; missing/null/mismatched returns 403.
+        Sec-Fetch-Site, if present, must be same-origin. Browser supplies
+        header.
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string, minLength: 1, maxLength: 2000 }
+      description: >-
+        Opaque versioned signed token, <=1h expiry, filter/list/viewer-bound.
+        Preserve exact value; change filters clears it. Invalid/expired/old
+        unsigned or wrong scope yields 400 invalid_cursor. No offset/limit
+        parameters.
+    BotHeader:
+      name: x-bot-token
+      in: header
+      required: false
+      schema: { $ref: '#/components/schemas/BotToken' }
+      description: Fresh action-bound token when risk policy requires interactive challenge
+  responses:
+    BadRequest:
+      description: Malformed JSON/query/UUID payload or invalid field/cursor; correct
+        input before retry
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStore' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            invalid: { value: { error: invalid_request } }
+            cursor: { value: { error: invalid_cursor } }
+    Unauthorized:
+      description: Missing, expired, revoked or invalid credential; no identity
+        details disclosed
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStore' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: unauthorized }
+    Forbidden:
+      description: Origin/role/admission/PA-tag denial, or required/invalid bot challenge
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStore' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            origin: { value: { error: forbidden } }
+            challenge: { value: { error: bot_challenge_required } }
+            tag: { value: { error: pa_tag_admin_only } }
+    NotFound:
+      description: Target missing, inaccessible, malformed ID or disallowed current state
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStore' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: resource_unavailable }
+    Conflict:
+      description: Object missing/mismatch, expired intent, duplicate open report or
+        self-suspension
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStore' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            expired: { value: { error: upload_expired } }
+            duplicate: { value: { error: report_already_open } }
+    TooLarge:
+      description: File exceeds runtime upload limit, or JSON body exceeds 65536 bytes
+        before parsing
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStore' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            file:
+              value:
+                error: file_too_large
+            json:
+              value:
+                error: request_too_large
+    UnsupportedMediaType:
+      description: Request media type or extension/MIME pair is not allowed
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStore' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            request: { value: { error: unsupported_media_type } }
+            file: { value: { error: file_type_not_allowed } }
+    RateLimited:
+      description: Shared operation/IP/user limit exceeded; wait the same Retry-After
+        duration
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStore' }
+        Retry-After:
+          required: true
+          schema: { type: integer, minimum: 1 }
+          description: Seconds until retry; equals body retryAfter
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [ error, retryAfter ]
+            properties:
+              error: { const: rate_limited }
+              retryAfter: { type: integer, minimum: 1 }
+              requestId: { type: string, maxLength: 100 }
+          example: { error: rate_limited, retryAfter: 45 }
+    Unavailable:
+      description: Required dependency unavailable or uploads explicitly disabled;
+        fail closed
+      headers:
+        Cache-Control: { $ref: '#/components/headers/NoStore' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            dependency: { value: { error: service_unavailable } }
+            scannerDisabled: { value: { error: uploads_disabled } }
+            botDependency: { value: { error: bot_challenge_unavailable } }
+  schemas:
+    DashboardRanking:
+      type: array
+      maxItems: 8
+      items:
+        type: object
+        required: [label, value]
+        properties:
+          label: { type: string }
+          value: { type: integer, minimum: 0 }
+    Uuid:
+      type: string
+      format: uuid
+      examples: [ '11373201-18b6-48fa-b8a7-41ba8c281736' ]
+    Timestamp:
+      type: string
+      format: date-time
+      description: UTC RFC3339; internal cursor preserves exact DB microseconds
+      examples: [ '2026-11-11T08:00:00Z' ]
+    SizeBytes:
+      type: integer
+      format: int64
+      minimum: 1
+      maximum: 524288000
+      description: Effective runtime UPLOAD_MAX_BYTES may be lower; default52428800
+    BotToken:
+      type: string
+      maxLength: 4096
+      description: Fresh bot-provider token, never log; action/hostname/time/replay verified
+    ResourceStatus:
+      type: string
+      enum: [ pending, scanning, active, hidden, quarantined, deleted, failed ]
+    FileType:
+      type: string
+      enum: [ pdf, docx, pptx, xlsx, txt, png, jpeg ]
+    MimeType:
+      type: string
+      enum:
+        - application/pdf
+        - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+        - application/vnd.openxmlformats-officedocument.presentationml.presentation
+        - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+        - text/plain
+        - image/png
+        - image/jpeg
+    Tags:
+      type: array
+      maxItems: 10
+      items: { type: string, minLength: 1, maxLength: 30 }
+      description: >-
+        Trim, canonicalize PA aliases (NFKC/lowercase/remove non-ASCII a-z0-9;
+        keys pa,peeradvisor,peeradvisors), then case-insensitive dedupe.
+        Students cannot submit any PA alias, even unchanged on metadata update.
+    PublicConfig:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          botSiteKey,
+          uploadMaxBytes,
+          maxFiles,
+          uploadConcurrency,
+          uploadsEnabled,
+          sessionTransport
+        ]
+      properties:
+        botSiteKey: { type: string, minLength: 1 }
+        uploadMaxBytes: { $ref: '#/components/schemas/SizeBytes' }
+        maxFiles: { type: integer, const: 5 }
+        uploadConcurrency: { type: integer, const: 2 }
+        uploadsEnabled:
+          type: boolean
+          description: Scanner is configured; not a live dependency-health guarantee
+        sessionTransport: { type: string, enum: [ cookie, header-compat ] }
+    Error:
+      type: object
+      additionalProperties: false
+      required: [ error ]
+      properties:
+        error: { type: string, minLength: 1, maxLength: 100 }
+        requestId: { type: string, maxLength: 100 }
+        retryAfter: { type: integer, minimum: 1 }
+        issues:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [ path, message ]
+            properties:
+              path:
+                type: array
+                items: { type: string }
+              message: { type: string, maxLength: 300 }
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [ accessToken ]
+      properties:
+        accessToken: { type: string, minLength: 1, maxLength: 32768 }
+        returnTo:
+          type: string
+          maxLength: 500
+          default: /resources
+          description: Safe site-relative path; reject //, backslashes, controls and
+            encoded bypasses
+          pattern: '^/[^\\\r\n]*$'
+        botToken: { $ref: '#/components/schemas/BotToken' }
+    CookieLoginResponse:
+      type: object
+      additionalProperties: false
+      required: [ sessionTransport, expiresAt, redirectUrl ]
+      properties:
+        sessionTransport: { const: cookie }
+        expiresAt: { $ref: '#/components/schemas/Timestamp' }
+        redirectUrl: { type: string, maxLength: 500 }
+    CompatibilityLoginResponse:
+      type: object
+      additionalProperties: false
+      required: [ sessionTransport, accessToken, expiresAt, redirectUrl ]
+      properties:
+        sessionTransport: { const: header-compat }
+        accessToken:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 4096,
+            description: Sider opaque session token,
+            not platform token
+          }
+        expiresAt: { $ref: '#/components/schemas/Timestamp' }
+        redirectUrl: { type: string, maxLength: 500 }
+    CurrentUser:
+      type: object
+      additionalProperties: false
+      required: [ id, displayName, email, avatarUrl, org, role ]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        displayName: { type: string }
+        email: { type: [ string, 'null' ], format: email }
+        avatarUrl: { type: [ string, 'null' ], format: uri }
+        org: { type: string }
+        role: { type: string, enum: [ student, admin ] }
+    HighlightSegment:
+      type: object
+      additionalProperties: false
+      required: [ text, highlighted ]
+      properties:
+        text: { type: string }
+        highlighted: { type: boolean }
+    ResourceListItem:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          title,
+          description,
+          tags,
+          originalFilename,
+          mimeType,
+          sizeBytes,
+          publishedAt,
+          authorName
+        ]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, maxLength: 2000 }
+        tags: { $ref: '#/components/schemas/Tags' }
+        originalFilename: { type: string, maxLength: 255 }
+        mimeType: { $ref: '#/components/schemas/MimeType' }
+        sizeBytes: { $ref: '#/components/schemas/SizeBytes' }
+        publishedAt: { $ref: '#/components/schemas/Timestamp' }
+        authorName: { type: string }
+        highlights:
+          type: object
+          additionalProperties: false
+          required: [ title, description ]
+          properties:
+            title:
+              type: array
+              items: { $ref: '#/components/schemas/HighlightSegment' }
+            description:
+              type: array
+              items: { $ref: '#/components/schemas/HighlightSegment' }
+    ResourceDetail:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          title,
+          description,
+          tags,
+          originalFilename,
+          mimeType,
+          sizeBytes,
+          status,
+          publishedAt,
+          authorName,
+          authorId
+        ]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, maxLength: 2000 }
+        tags: { $ref: '#/components/schemas/Tags' }
+        originalFilename: { type: string, maxLength: 255 }
+        mimeType: { $ref: '#/components/schemas/MimeType' }
+        sizeBytes: { $ref: '#/components/schemas/SizeBytes' }
+        status:
+          {
+            type: string,
+            enum: [ pending, scanning, active, hidden, quarantined, failed ]
+          }
+        publishedAt: { type: [ string, 'null' ], format: date-time }
+        authorName: { type: string }
+        authorId: { $ref: '#/components/schemas/Uuid' }
+    NextCursor:
+      type: [ string, 'null' ]
+      maxLength: 2000
+      description: Opaque signed continuation or null when no next page
+    ResourcePage:
+      type: object
+      additionalProperties: false
+      required: [ items, nextCursor ]
+      properties:
+        items:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/ResourceListItem' }
+        nextCursor: { $ref: '#/components/schemas/NextCursor' }
+    OwnResource:
+      type: object
+      additionalProperties: false
+      required: [ id, title, originalFilename, status, createdAt ]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        originalFilename: { type: string, maxLength: 255 }
+        status: { $ref: '#/components/schemas/ResourceStatus' }
+        createdAt: { $ref: '#/components/schemas/Timestamp' }
+    OwnResourcePage:
+      type: object
+      additionalProperties: false
+      required: [ items, nextCursor ]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/OwnResource' }
+        nextCursor: { $ref: '#/components/schemas/NextCursor' }
+    ResourceState:
+      type: object
+      additionalProperties: false
+      required: [ id, status ]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { $ref: '#/components/schemas/ResourceStatus' }
+    ResourceStateEnvelope:
+      type: object
+      additionalProperties: false
+      required: [ resource ]
+      properties:
+        resource: { $ref: '#/components/schemas/ResourceState' }
+    MetadataRequest:
+      type: object
+      additionalProperties: false
+      required: [ title, description, tags ]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, maxLength: 2000 }
+        tags: { $ref: '#/components/schemas/Tags' }
+        botToken: { $ref: '#/components/schemas/BotToken' }
+    UploadIntentRequest:
+      type: object
+      additionalProperties: false
+      required: [ title, originalFilename, sizeBytes, mimeType ]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, maxLength: 2000, default: '' }
+        tags:
+          $ref: '#/components/schemas/Tags'
+          default: []
+        originalFilename: { type: string, minLength: 1, maxLength: 255 }
+        sizeBytes: { $ref: '#/components/schemas/SizeBytes' }
+        mimeType: { $ref: '#/components/schemas/MimeType' }
+        botToken: { $ref: '#/components/schemas/BotToken' }
+    UploadIntentResponse:
+      type: object
+      additionalProperties: false
+      required: [ resourceId, uploadUrl, expiresIn, headers ]
+      properties:
+        resourceId: { $ref: '#/components/schemas/Uuid' }
+        uploadUrl:
+          {
+            type: string,
+            format: uri,
+            description: Temporary private-storage PUT URL; never log or persist
+          }
+        expiresIn: { type: integer, const: 300 }
+        headers:
+          type: object
+          additionalProperties: false
+          required: [ content-type, x-amz-meta-resource ]
+          properties:
+            content-type: { $ref: '#/components/schemas/MimeType' }
+            x-amz-meta-resource: { $ref: '#/components/schemas/Uuid' }
+          description: Exact signed headers; browser automatically sets Content-Length to
+            file size
+    BotRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        botToken: { $ref: '#/components/schemas/BotToken' }
+    DownloadResponse:
+      type: object
+      additionalProperties: false
+      required: [ url, expiresIn ]
+      properties:
+        url:
+          {
+            type: string,
+            format: uri,
+            description: Temporary attachment URL; do not store or log
+          }
+        expiresIn: { type: integer, const: 120 }
+    ReportReason:
+      type: string
+      enum: [ copyright_privacy, malware, inappropriate, spam, other ]
+    ReportRequest:
+      type: object
+      additionalProperties: false
+      required: [ reason ]
+      properties:
+        reason: { $ref: '#/components/schemas/ReportReason' }
+        details: { type: string, maxLength: 1000, default: '' }
+        botToken: { $ref: '#/components/schemas/BotToken' }
+    AdminReport:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          resourceId,
+          resourceTitle,
+          resourceStatus,
+          authorId,
+          reporterName,
+          reason,
+          details,
+          status,
+          createdAt,
+          handledAt,
+          resolutionNote
+        ]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        resourceId: { $ref: '#/components/schemas/Uuid' }
+        resourceTitle: { type: string }
+        resourceStatus: { $ref: '#/components/schemas/ResourceStatus' }
+        authorId: { $ref: '#/components/schemas/Uuid' }
+        reporterName: { type: string }
+        reason: { $ref: '#/components/schemas/ReportReason' }
+        details: { type: string, maxLength: 1000 }
+        status: { type: string, enum: [ open, resolved, dismissed ] }
+        createdAt: { $ref: '#/components/schemas/Timestamp' }
+        handledAt: { type: [ string, 'null' ], format: date-time }
+        resolutionNote: { type: [ string, 'null' ], maxLength: 1000 }
+    ReportPage:
+      type: object
+      additionalProperties: false
+      required: [ reports, nextCursor ]
+      properties:
+        reports:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/AdminReport' }
+        nextCursor: { $ref: '#/components/schemas/NextCursor' }
+    ModerationRequest:
+      type: object
+      additionalProperties: false
+      required: [ action, reason ]
+      properties:
+        action: { type: string, enum: [ hide, restore, remove ] }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        reportId: { $ref: '#/components/schemas/Uuid' }
+        botToken: { $ref: '#/components/schemas/BotToken' }
+    AuditEntry:
+      type: object
+      additionalProperties: false
+      required: [ id, actor, action, targetType, targetId, metadata, createdAt ]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        actor: { type: [ string, 'null' ] }
+        action: { type: string }
+        targetType: { type: string }
+        targetId: { type: [ string, 'null' ], format: uuid }
+        metadata:
+          type: object
+          additionalProperties: { type: [ string, number, boolean, 'null' ] }
+          description: Allowlisted sanitized scalar metadata, never token/URL/secret/raw
+            external payload
+        createdAt: { $ref: '#/components/schemas/Timestamp' }
+    AuditPage:
+      type: object
+      additionalProperties: false
+      required: [ items, nextCursor ]
+      properties:
+        items:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/AuditEntry' }
+        nextCursor: { $ref: '#/components/schemas/NextCursor' }
+    Readiness:
+      type: object
+      additionalProperties: false
+      required: [ status, services ]
+      properties:
+        status: { type: string, enum: [ ready, degraded ] }
+        services:
+          type: object
+          additionalProperties: false
+          required: [ database, rateLimit, storage ]
+          properties:
+            database: { type: boolean }
+            rateLimit: { type: boolean }
+            storage: { type: boolean }
+    CleanupResult:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          inspected,
+          cleaned,
+          artifactsCleaned,
+          expiredTransactions,
+          expiredSessions
+        ]
+      properties:
+        inspected: { type: integer, minimum: 0, maximum: 200 }
+        cleaned: { type: integer, minimum: 0, maximum: 200 }
+        artifactsCleaned: { type: integer, minimum: 0, maximum: 200 }
+        expiredTransactions: { type: integer, minimum: 0 }
+        expiredSessions: { type: integer, minimum: 0 }

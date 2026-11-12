@@ -1,5 +1,7 @@
 # 上传性能改造与 PRD 验收记录
 
+> 历史证据：本文件记录 2026-11-10 的旧 Next.js 版本检查，保留原始测试结果与发布标识。本次文档核对未重验线上；合成会话链路不代替真实 Launchpad SDK 登录验收，也不证明 Java 版本通过。新版本按 [迁移 PRD](JAVA-MIGRATION-PRD.md) 与 [部署环境](DEPLOYMENT-ENVIRONMENT.md) 重新验收。
+
 日期：2026-11-10（Asia/Shanghai）。对应 MVP PRD v0.6、完整 PRD v0.7。
 
 本次完成代码修改、测试和需求核对。0006 迁移已应用到生产，新版本及后台 worker 已部署到 `https://siderlearn.com`，生产浏览器直传、自动扫描、搜索和下载链路通过。其余 PRD / M0 门槛仍按独立证据验收。

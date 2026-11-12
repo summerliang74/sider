@@ -1,6 +1,10 @@
 # SHSID Online MVP 产品需求文档
 
-> 文档状态：Draft v0.6（直传与异步扫描实现基线）
+> 2026-11-11 技术选型更新：Java 21 + Spring Boot 4.1.2 后端、原生 HTML/CSS/JavaScript 前端、沿用 PostgreSQL；代码已在 backend 实现并完成本地构建，尚未发布或切换生产。需求见 [Java 迁移 PRD](docs/JAVA-MIGRATION-PRD.md)，配套 [API](docs/API-DESIGN.md)、[数据库访问](docs/DATABASE-ACCESS.md) 与 [实施状态](docs/JAVA-IMPLEMENTATION-STATUS.md)。本文件保留原版本业务背景、技术实现和历史验收；下文 Next.js/TypeScript、旧命令与旧测试结果不作为Java实现或生产验收证据。
+
+> 用户确认应用环境仍为 Launchpad，UCloud仅独立扫描；Java容器、平台变量与配额要求见 [部署环境](docs/DEPLOYMENT-ENVIRONMENT.md)。下文旧Node命令和历史验收不代表Java已实现或通过。文档核对见 [审计记录](docs/DOCUMENTATION-AUDIT.md)。
+
+> 文档状态：Draft v0.6（原版直传与异步扫描实现基线）
 > 更新日期：2026-11-10
 > 来源：从 `SHSID-Online-PRD.md` Phase 1 提取
 > 产品范围：Launchpad 鉴权 + Resource Hub + 统一标签筛选（含管理员专用 PA 标签） + 最低必要的安全与管理能力
@@ -356,7 +360,7 @@ flowchart LR
 - `id`、`actor_id`、`action`、`target_type`、`target_id`、`metadata`、`created_at`
 - `metadata` 不得包含 token、会话明文、挑战 token 或预签名 URL
 
-遗留说明：数据库迁移中仍存在已停用的 `oauth_login_transactions` 表，仅由清理任务删除过期行；当前 SDK 鉴权路径不读写该表，也不得恢复为第二套 PKCE 状态机。该表应在学生内测前通过单独迁移删除。
+遗留说明：数据库迁移中仍存在已停用的 `oauth_login_transactions` 表，仅由清理任务删除过期行；当前 SDK 鉴权路径不读写该表，也不得恢复为第二套 PKCE 状态机。原先“内测前删除表”的要求已延后为独立评审迁移，不作为首版 Java 切换前提；本次不删除表或更改迁移历史。
 
 ## 9. API 边界
 
@@ -367,7 +371,7 @@ flowchart LR
 | `POST /api/auth/launchpad/session` | 接收 SDK access token、调用 userinfo、执行准入并创建本站会话 |
 | `POST /api/auth/logout` | 撤销本站会话 |
 | `GET /api/me` | 返回最小当前用户资料 |
-| `GET /api/resources?q=&cursor=&sort=` | 搜索或最近资源 |
+| `GET /api/resources?q=&type=&tag=&cursor=` | 搜索或最近资源；排序由查询是否为空决定，无 sort 参数 |
 | `POST /api/resources/upload-intents` | 创建独立 pending 记录和 300 秒预签名 PUT |
 | `PUT /api/resources/:id/upload` | 校验上传意图并将请求体流式写入私有对象存储 |
 | `POST /api/resources/:id/complete` | 幂等校验并冻结对象，原子入队，返回 202/scanning |

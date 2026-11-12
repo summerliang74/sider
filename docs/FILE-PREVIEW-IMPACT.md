@@ -1,5 +1,7 @@
 # File preview performance impact
 
+> Scope: the no-preview product decision also applies to the Java target; the Node/Launchpad performance discussion below describes the previous implementation, not Java measurements. See [migration PRD](JAVA-MIGRATION-PRD.md) and [deployment environment](DEPLOYMENT-ENVIRONMENT.md) for target capacity and acceptance.
+
 ## Decision
 
 Online file preview is removed from the MVP. Authenticated users obtain a short-lived, pre-signed object-storage download URL instead. The application no longer exposes `POST /api/resources/:id/preview` or relays private object bodies for browser rendering.

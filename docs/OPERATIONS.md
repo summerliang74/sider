@@ -1,5 +1,7 @@
 # MVP deployment and operations
 
+> Scope: legacy Next.js/Launchpad commands. The Launchpad-app/UCloud-scanner separation remains the selected topology for Java. For target container/port/quotas/secrets use [deployment environment](DEPLOYMENT-ENVIRONMENT.md) and [migration PRD](JAVA-MIGRATION-PRD.md). The root Dockerfile, Compose and Node commands below do not deploy Java; UCloud capacity is only the scanner budget, and OpenClaw must be preserved.
+
 This file turns the PRD's external-service requirements into an operator checklist. It does not contain credentials.
 
 For Launchpad OAuth/domain registration and bridge requirements, follow [LAUNCHPAD-SETUP.md](./LAUNCHPAD-SETUP.md). The Next.js application, custom domain, and application secrets are managed in the Launchpad project. UCloud is used only for the isolated malware scanner.
@@ -19,7 +21,7 @@ Launchpad runs the Next.js compute process, HTTPS custom domain, and OAuth bridg
 
 ## Object storage
 
-The bucket is private. Block public ACLs and policies. The application credential needs only `PutObject`, `GetObject`, `HeadObject`, and `DeleteObject` for the configured bucket. The scanner gets a separate read-only credential.
+The bucket is private. Block public ACLs and policies. The application credential needs scoped `PutObject`, `GetObject`, `DeleteObject` and restricted `ListBucket` for the readiness listing. HEAD is authorized through object-read permission; do not invent a separate AWS IAM `s3:HeadObject` action. Conditional copy needs source read and target write. The scanner gets a separate read-only credential. Adapt exact IAM syntax to the storage provider and reviewed templates.
 
 Start from the reviewed templates in `infra/s3-cors.example.json`, `infra/s3-lifecycle.example.json`, `infra/s3-app-policy.example.json`, and `infra/s3-scanner-policy.example.json`; replace every placeholder and adapt only provider-specific syntax.
 
@@ -27,7 +29,7 @@ CORS must allow only the production application origin, methods `PUT`, `GET`, an
 
 Files are uploaded directly under `pending/` with a 300-second signed PUT bound to one key, length, type and resource metadata. Complete creates a separate server-only `pending/<id>/snapshot-*` copy with an ETag precondition and queues it transactionally. A successful scan copies that snapshot to `active/`; rejected snapshots remain private and non-downloadable until pending retention removes them. Existing legacy `quarantine/` objects remain supported. Configure lifecycle rules to:
 
-- remove objects under `pending/` after two days as a safety net;
+- the legacy template expires all `pending/` objects after two days, including immutable snapshots; this is **not safe by itself for live queued/processing jobs** because bucket lifecycle does not inspect PostgreSQL. Do not apply it unchanged to the Java target; first validate a cleanable tag/prefix or retention strategy that excludes live inputs, and use database-aware cleanup meanwhile;
 - abort incomplete multipart uploads after one day;
 - never make an object public.
 
@@ -73,4 +75,4 @@ Store application production values in Launchpad environment variables and scann
 
 Do not open student beta until every M0 item in the MVP PRD has an owner and recorded evidence, production `SHSID_LAUNCHPAD_OIDC_DEV=0`, the migration and rollback paths have been rehearsed, S3 CORS rejects an unapproved origin, the database restore test succeeds, and an external credential rotation has been demonstrated.
 
-After deployment, run the non-destructive public verification with `VERIFY_BASE_URL=https://your-domain npm run verify:production`. Add `VERIFY_CRON_SECRET` in the process environment to include authenticated readiness checks; the script never prints the secret. Keep its output with the release evidence.
+After deploying this legacy version, run the non-destructive public verification with `VERIFY_BASE_URL=https://your-domain npm run verify:production`. Add `VERIFY_CRON_SECRET` in the process environment to include authenticated readiness checks; the script never prints the secret. Keep its output with the release evidence. Public `/api/health` is liveness only; `/api/internal/ready` checks database/limiter/storage, and neither alone proves scanner, real SDK login or full release acceptance.

@@ -1,6 +1,8 @@
 # Launchpad setup for SHSID Online
 
-This checklist is derived from the Launchpad Manual pages “Sign in with Launchpad,” “Deploy configuration,” “Domains,” and “Data & storage (for apps).” The repository now contains `.launchpad/deploy.json`, so Launchpad can resolve the build, migration, start command, health path, rollback policy, and environment references.
+> Scope: the commands below describe the legacy Node/Launchpad release. Java21/Spring Boot4.1.2 and native pages now exist in backend, with local build/tests complete and a Java Dockerfile plan at the repository root. The former Node plan is saved in infra/legacy/launchpad-next.deploy.json. Java has not been published; see [implementation status](JAVA-IMPLEMENTATION-STATUS.md) and [deployment environment](DEPLOYMENT-ENVIRONMENT.md). UCloud remains scanner-only; the old Node commands below are not Java release commands.
+
+This historical checklist derives from the Launchpad Manual pages “Sign in with Launchpad,” “Deploy configuration,” “Domains,” and “Data & storage (for apps).” References below to the npm-based deploy file apply to the saved legacy plan. The current root `.launchpad/deploy.json` selects backend Dockerfile/8080 and runtime references, without releaseCommand or startup DDL. It has not been applied to Launchpad.
 
 ## What the Manual confirms
 
@@ -14,7 +16,7 @@ This checklist is derived from the Launchpad Manual pages “Sign in with Launch
 - `.launchpad/deploy.json` contains configuration and environment references, never plaintext credentials. Runtime references are available to `releaseCommand` and the running release.
 - Launchpad does not provide managed PostgreSQL, Redis, or object storage. Apps connect to those services using their own network endpoints and credentials.
 
-Launchpad is restricted to SHSID students, so Sider treats a valid Launchpad identity as the student-membership boundary. Sider records `org`, `verified`, and `allows` for diagnostics but does not repeat those checks at login. Administrator subjects still come from the SHSID/Launchpad administrator or a controlled `/oauth/userinfo` discovery flow.
+The existing admission premise is that Launchpad is restricted to SHSID students, so Sider treats a valid Launchpad identity as the student-membership boundary. Sider persists `org` and `verified` as profile snapshots; `allows` is input-validated only and is not persisted. These optional attributes do not currently block login. Administrator subjects must come from a controlled server-side `/oauth/userinfo` lookup or the authorized platform administrator; do not infer identity or role from email or client-supplied data.
 
 ## Create Launchpad Variables
 
@@ -51,15 +53,9 @@ For initial domain and Launchpad sign-in verification before the malware scanner
 
 ### One-time administrator subject discovery
 
-When the exact administrator subject is not known yet:
+The retained `/auth/discovery` page requires a separate encrypted short-lived cookie, but the current SDK session-exchange route does not issue that credential. Setting `SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL` and signing in therefore does **not** provide a working discovery flow; the old `__discovery__` placeholder procedure is retired. Keep that setting `disabled`.
 
-1. Set `secret://project/shsid-admin-subs=__discovery__` until the real administrator subject is known.
-2. Set `SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL` to one exact verified test-account email.
-3. Deploy and sign in with that account. The callback redirects to `/auth/discovery`, which displays the exact `org` and `sub` for five minutes.
-4. Put the displayed subject in `secret://project/shsid-admin-subs` if this account should be an administrator.
-5. Set `SHSID_LAUNCHPAD_ORG_DISCOVERY_EMAIL=disabled` and redeploy.
-
-Discovery does not create a user, persist the profile, or issue an application session. The temporary discovery route remains limited to the configured verified email; ordinary login does not require Launchpad's optional `verified` flag.
+Obtain the administrator's exact immutable subject through an authorized platform administrator or a controlled server-side userinfo check. Keep the result out of public pages and logs, then configure the reviewed `SHSID_ADMIN_SUBS` allow-list. Do not introduce local password login, grant an initial user automatic admin, or create a second server-driven PKCE flow. The Java target does not include the temporary discovery page.
 
 ## Create Launchpad Secrets
 
@@ -100,7 +96,7 @@ The committed deploy file performs:
 2. `npm run build:launchpad`
 3. `npm run db:migrate` as the one-per-deployment release command
 4. `npm start`
-5. readiness probing at `/api/health`
+5. process-liveness probing at `/api/health`; dependency readiness and complete release acceptance are separate checks
 
 Automatic rollback observes the release for five minutes. Database migrations are not automatically undone by a failed release, so every migration still needs a reviewed forward-fix or rollback procedure.
 

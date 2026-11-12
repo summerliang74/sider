@@ -1,3 +1,5 @@
+> 2026-11-11 适用范围：视觉规范继续适用于 Java + 原生 HTML/CSS/JavaScript 版本。文中的 Tailwind 类名仅表达样式意图，不要求引入 Tailwind、React 或 Vue；使用普通 CSS 实现等价效果。功能与权限以 [迁移 PRD](docs/JAVA-MIGRATION-PRD.md) 为准，部署与缓存见 [部署环境](docs/DEPLOYMENT-ENVIRONMENT.md)。
+
 请严格遵守以下风格规则并保持一致性，禁止风格漂移。
 
 
