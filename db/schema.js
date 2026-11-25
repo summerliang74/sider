@@ -14,7 +14,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-const tsvector = customType<{ data: string }>({
+const tsvector = customType({
   dataType() {
     return "tsvector";
   },
@@ -185,11 +185,8 @@ export const auditLogs = pgTable(
     action: text("action").notNull(),
     targetType: text("target_type").notNull(),
     targetId: uuid("target_id"),
-    metadata: jsonb("metadata").$type<Record<string, string | number | boolean | null>>().notNull().default({}),
+    metadata: jsonb("metadata").notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("audit_logs_target_idx").on(table.targetType, table.targetId, table.createdAt)],
 );
-
-export type User = typeof users.$inferSelect;
-export type Resource = typeof resources.$inferSelect;

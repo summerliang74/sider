@@ -1,51 +1,33 @@
 {
-  "name": "shsid-online",
+  "name": "sider-tooling",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "description": "Java application support: native frontend tests, database migrations and service checks",
   "engines": {
     "node": ">=20.9 <25"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "node scripts/build-next.mjs --fast",
-    "build:launchpad": "node scripts/build-next.mjs --fast",
-    "build:strict": "node scripts/build-next.mjs",
-    "start": "node scripts/start-next.mjs",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint . --max-warnings=0",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "build": "mvn -B -ntp -f backend/pom.xml package",
+    "start": "java -jar backend/target/sider-1.0.0.jar",
+    "test": "node --test scripts/vanilla-*.test.mjs scripts/navigation-cache.test.mjs",
+    "test:java": "mvn -B -ntp -f backend/pom.xml verify",
+    "lint": "eslint backend/src/main/resources/static scripts db drizzle.config.js eslint.config.mjs --max-warnings=0",
     "verify:production": "node scripts/verify-production.mjs",
     "verify:services": "node --env-file=.env.local scripts/verify-services.mjs",
     "scanner:start": "node --env-file=.env.local services/malware-scanner/server.mjs",
     "scanner:test": "node --test services/malware-scanner/server.test.mjs",
-    "worker:uploads": "node --env-file-if-exists=.env.local scripts/upload-worker.mjs",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:check": "drizzle-kit check"
+    "db:generate": "drizzle-kit generate --config=drizzle.config.js",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:check": "drizzle-kit check --config=drizzle.config.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1156.0",
-    "@aws-sdk/s3-request-presigner": "3.1156.0",
-    "@neon/config": "^1.9.4",
-    "@neon/env": "^1.6.5",
-    "@smithy/node-http-handler": "4.13.0",
     "drizzle-orm": "0.45.4",
-    "next": "16.4.3",
-    "postgres": "3.4.9",
-    "react": "19.3.1",
-    "react-dom": "19.3.1",
-    "zod": "4.6.7"
+    "postgres": "3.4.9"
   },
   "devDependencies": {
-    "@next/eslint-plugin-next": "16.4.3",
-    "@types/node": "^24.10.0",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
     "drizzle-kit": "^0.31.7",
-    "eslint": "9.39.4",
-    "eslint-config-next": "16.4.3",
-    "typescript": "5.9.3",
-    "vitest": "5.0.5"
+    "eslint": "9.39.4"
   }
 }

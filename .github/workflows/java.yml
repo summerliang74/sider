@@ -1,4 +1,4 @@
-name: Java migration
+name: Java CI
 on:
   pull_request:
   push:
@@ -36,4 +36,8 @@ jobs:
             psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
           done
       - run: mvn -B -ntp -f backend/pom.xml verify
-      - run: node --test scripts/vanilla-*.test.mjs
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run lint
+      - run: npm test
+      - run: npm run db:check
+      - run: npm run scanner:test

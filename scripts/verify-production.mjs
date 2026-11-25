@@ -23,7 +23,9 @@ check((await health.json()).status === "ok", "liveness payload");
 const login = await request("/login");
 const loginHtml = await login.text();
 check(login.status === 200, "login page");
-check(loginHtml.includes("Continue with Launchpad"), "Launchpad login control");
+check(loginHtml.includes('/assets/app.js'), "native application entry");
+const app = await request('/assets/app.js');
+check(app.status === 200 && (await app.text()).includes('Continue with Launchpad'), "Launchpad login control");
 check(login.headers.get("content-security-policy")?.includes("frame-ancestors 'none'"), "content security policy");
 check(login.headers.get("strict-transport-security")?.includes("max-age="), "HSTS");
 check(
@@ -33,13 +35,7 @@ check(
 check(login.headers.get("x-frame-options") === "DENY", "frame protection");
 
 const resources = await request("/resources");
-const resourcesHtml = await resources.text();
-// A loading boundary can flush a 200 response before authentication completes.
-// Next.js then emits its redirect meta tag and handles navigation on the client.
-const streamedRedirect = resourcesHtml.match(/<meta id="__next-page-redirect" http-equiv="refresh" content="\d+;url=([^"]+)"\s*\/?>/)?.[1];
-const httpRedirect = [302, 303, 307, 308].includes(resources.status);
-check(httpRedirect || (resources.status === 200 && Boolean(streamedRedirect)), "protected resource redirect");
-check((httpRedirect ? resources.headers.get("location") : streamedRedirect) === "/login", "protected resource redirect target");
+check(resources.status === 200 && (await resources.text()).includes('/assets/app.js'), "native resource page shell");
 check(resources.headers.get("cache-control")?.includes("no-store"), "protected page cache control");
 
 const me = await request("/api/me");
@@ -48,7 +44,7 @@ check(me.status === 401, "unauthenticated API rejection");
 const register = await request("/register");
 check(register.status === 404, "local registration route absent");
 
-const localLogin = await request("/api/auth/local", { method: "POST" });
+const localLogin = await request("/api/auth/local", { method: "POST", headers: { origin: base.origin, 'sec-fetch-site': 'same-origin', 'content-type': 'application/json' }, body: '{}' });
 check(localLogin.status === 404, "local authentication route absent");
 
 const csrf = await request("/api/auth/logout", {
