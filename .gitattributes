@@ -1,0 +1,16 @@
+# The active application is Java with a native HTML/CSS/JavaScript frontend.
+# Retained Next.js code is rollback/reference material, not the current runtime.
+# Exclude only legacy paths from GitHub language statistics; keep their real
+# syntax highlighting and normal diffs. Do not reclassify TypeScript as Java.
+app/** -linguist-detectable
+src/** -linguist-detectable
+# This schema is still used by the shared Drizzle migration tooling.
+src/db/schema.ts !linguist-detectable
+frontend-prototype/** -linguist-detectable
+infra/legacy/** -linguist-detectable
+/instrumentation.ts -linguist-detectable
+/neon.ts -linguist-detectable
+/next-env.d.ts -linguist-detectable
+/next.config.ts -linguist-detectable
+/tsconfig.json -linguist-detectable
+/vitest.config.mts -linguist-detectable
