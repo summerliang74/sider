@@ -1,83 +1,63 @@
 # Sider — Java / Spring Boot
 
-## Java version
+Sider is a learning-resource hub built with **Java 21, Spring Boot 4.1.2, PostgreSQL and a native HTML/CSS/JavaScript frontend**. The application, including the preloaded administrator Dashboard, lives in `backend/`.
 
-The application on `main` is **Java 21 + Spring Boot 4.1.2, native HTML/CSS/JavaScript, and PostgreSQL**, implemented in `backend/`. The last verified production deployment was Java release v9 at [siderlearn.com](https://siderlearn.com) on 2026-11-13, from commit `1ce8c91`. This is a dated verification record, not a live availability check.
+The former Next.js/TypeScript application was removed from `main` on 2026-11-25. It remains available in Git history through commit `a56aa7c`; see [cleanup and recovery notes](docs/LEGACY-CLEANUP.md). The last recorded production verification was release v9 at [siderlearn.com](https://siderlearn.com) on 2026-11-13, from `1ce8c91`. This is a historical record, not a current availability check.
 
-| Path | Role |
+## Project layout
+
+| Path | Purpose |
 | --- | --- |
-| `backend/src/main/java/` | Current Java APIs, authentication, uploads and admin statistics |
-| `backend/src/main/resources/static/` | Current native frontend and preloaded admin Dashboard |
-| `backend/pom.xml`, `backend/Dockerfile`, `.launchpad/deploy.json` | Current build and deployment entry points |
-| `drizzle/`, `drizzle.config.ts`, `src/db/schema.ts` | Existing database migrations and schema tooling; migrations remain shared |
-| `services/malware-scanner/` | Independent Node.js malware scanner |
-| `app/`, `src/`, root Next.js configuration and `package.json` | Retained legacy Next.js application and tooling; not the Java runtime |
+| `backend/src/main/java/` | Java APIs, authentication, uploads, moderation and statistics |
+| `backend/src/main/resources/static/` | Native frontend and admin Dashboard |
+| `backend/pom.xml`, `backend/Dockerfile` | Application build and container |
+| `.launchpad/deploy.json` | Existing Launchpad deployment, Java on port 8080 |
+| `db/schema.js`, `drizzle.config.js` | JavaScript database schema tooling |
+| `drizzle/` | Unchanged SQL migrations and migration history |
+| `services/malware-scanner/` | Independent Node.js scanner |
+| `scripts/`, `package.json` | Frontend tests, migration and verification tools |
 
-The root npm commands and Docker/Compose files still belong to the legacy version. Use the Maven commands below for the current application. `.gitattributes` excludes the retained legacy application from GitHub language statistics while keeping the Java backend and native frontend in the statistics; it does not change file languages, build behavior or deployment.
+## Build and run
 
-- [Implementation and verification status](docs/JAVA-IMPLEMENTATION-STATUS.md), a historical migration checkpoint; its pre-release statements predate the deployment recorded above
-
-- [Java migration PRD](docs/JAVA-MIGRATION-PRD.md)
-- [API design](docs/API-DESIGN.md) and [OpenAPI contract](docs/openapi.yaml)
-- [Database access design](docs/DATABASE-ACCESS.md)
-- [Launchpad deployment environment and configuration](docs/DEPLOYMENT-ENVIRONMENT.md), including Java containers, platform quotas, ports, runtime secrets and the independent UCloud scanner
-- [Documentation audit and applicability](docs/DOCUMENTATION-AUDIT.md)
-
-Use Java 21 and Maven 3.9; no Maven Wrapper is included. Explicitly inject the [Java environment settings](docs/examples/java-production.env.example) before starting the JAR—Spring does not automatically load `.env` files. For all PostgreSQL integration tests, provide a separate migrated test database using `TEST_DATABASE_URL` and matching `TEST_DATABASE_HOST`; missing test settings can cause those tests to skip.
+Install Java 21 and Maven 3.9. No Maven Wrapper is included.
 
 ```text
 mvn -B -ntp -f backend/pom.xml verify
-node --test scripts/vanilla-*.test.mjs
 java -jar backend/target/sider-1.0.0.jar
 ```
 
-The root `.launchpad/deploy.json` now selects `backend/Dockerfile` on port 8080 with runtime references and no startup/release migration. `node scripts/package-java-launchpad.mjs <release-tag>` creates a local source snapshot only. The previous Node plan is preserved in [infra/legacy](infra/legacy/launchpad-next.deploy.json); Docker/Compose at the repository root remain legacy files.
+Configure process environment variables from [the Java template](docs/examples/java-production.env.example) before starting the JAR. Spring does not automatically load `.env` files. The root example files use the same Java settings. Never commit populated credentials.
 
-The commands and implementation notes below describe the **legacy Next.js version** and remain for reference and rollback planning.
+Node.js 20.9–24 is used only for tooling and the independent scanner. Root `npm run build` and `npm start` delegate to the Java commands above.
 
-Implementation of the MVP in [`SHSID-Online-MVP-PRD.md`](./SHSID-Online-MVP-PRD.md).
-
-## Legacy Next.js implementation (reference)
-
-- Next.js App Router, React, strict TypeScript, ESLint, and Vitest.
-- Drizzle/PostgreSQL schema and initial migration for users, sessions, OAuth transactions, resources, reports, and audit logs.
-- Launchpad SDK Authorization Code + PKCE flow with state and nonce validation, server-side `/oauth/userinfo` identity resolution, and a one-hour maximum Sider session.
-- Protected resource search, stable keyset pagination, active-only discovery and ordinary-viewer details; authors/admins can inspect non-deleted processing states. Current-user endpoint and server-side logout revocation.
-- Private S3-compatible direct signed PUT uploads, immutable snapshots and durable scan jobs, signed downloads, author metadata/delete controls, and scheduled cleanup. The server-streamed upload route is a legacy compatibility path.
-- Reports, moderation, report dismissal, user suspension with immediate session revocation, and an administrator audit log.
-- Shared Redis-backed IP/user/operation limits, risk-triggered bot verification with action/hostname/freshness/replay checks, strict same-origin mutation checks, structured privacy-safe metrics, and security headers.
-- Responsive login, search, upload, detail, “my uploads,” report, and administration pages based on the approved quiet document-tool visual direction.
-- Startup-time environment validation plus deployment, storage, scanner, lifecycle, recovery, monitoring, and rotation runbooks.
-
-## Legacy local setup
-
-1. Copy `.env.example` to `.env.local` and replace every placeholder.
-2. Create PostgreSQL and run `npm run db:migrate` with the direct connection explicitly injected. The Drizzle CLI may read `.env`, but does not automatically read Next.js's `.env.local`; copying that file alone is insufficient for migration configuration.
-3. Configure private S3-compatible storage, Redis REST, a Turnstile-compatible challenge verifier, and the scanner contract in [`docs/SCANNER-CONTRACT.md`](./docs/SCANNER-CONTRACT.md).
-4. Run `npm run dev`.
-
-Sider supports Launchpad authentication only. Local username/password login and
-invitation registration are not part of the application. For a self-hosted
-development proxy, copy `.env.production.example` to `.env.production`, replace
-every placeholder, and ensure the application origin exposes Launchpad's
-same-origin `/dashboard-api/` bridge before starting the container.
-
-Launchpad must allow the local `APP_BASE_URL` while `SHSID_LAUNCHPAD_OIDC_DEV=1`. Production must use an HTTPS `APP_BASE_URL`, TLS PostgreSQL, and `SHSID_LAUNCHPAD_OIDC_DEV=0`.
-
-The application does not silently substitute local or in-memory services for production dependencies. If storage, rate limiting, challenge verification, or scanning is unavailable, the protected operation fails closed. See [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) before deployment.
-
-Implementation coverage and the remaining production acceptance evidence are tracked in [`docs/MVP-TRACEABILITY.md`](./docs/MVP-TRACEABILITY.md).
-
-Launchpad-specific Variables, Secrets, OAuth registration, domain bridge, and release steps are listed in [`docs/LAUNCHPAD-SETUP.md`](./docs/LAUNCHPAD-SETUP.md).
-
-## Legacy verification
-
-```powershell
-npm run typecheck
-npm run lint
+```text
+npm ci
 npm test
+npm run lint
 npm run db:check
-npm run build
+npm run scanner:test
 ```
 
-After deployment, run `VERIFY_BASE_URL=https://your-domain npm run verify:production` for the non-destructive production smoke checks.
+Full Java database integration tests require an explicitly isolated, migrated PostgreSQL database through `TEST_DATABASE_URL` and matching `TEST_DATABASE_HOST`. Without them, database tests skip; a successful build alone does not prove database integration.
+
+## Database migrations
+
+The SQL files and Drizzle journal in `drizzle/` are preserved unchanged. The schema definition was converted to JavaScript in `db/schema.js` without changing table definitions.
+
+`npm run db:migrate` uses `scripts/migrate.mjs` and the existing Drizzle migration journal. Explicitly inject `DATABASE_URL_UNPOOLED` (preferred) or `DATABASE_URL` for the intended database. Do not pass the SQL history through another migration engine or run it on production without a reviewed migration plan. Schema generation uses `npm run db:generate`; checking migration metadata uses `npm run db:check`. Neither command belongs to application startup.
+
+## Deployment and checks
+
+`node scripts/package-java-launchpad.mjs <release-tag>` creates a local Java source snapshot; it does not publish. The Launchpad plan selects `backend/Dockerfile`, references runtime secrets by name and does not run migrations at startup. UCloud hosts the independent scanner; preserve its OpenClaw installation.
+
+For read-only HTTP smoke checks, explicitly set `VERIFY_BASE_URL` and run `npm run verify:production`. Service diagnostics (`npm run verify:services`) create temporary storage objects and Redis keys and require separate authorization for the target environment.
+
+## Documentation
+
+- [API design](docs/API-DESIGN.md) and [OpenAPI contract](docs/openapi.yaml)
+- [Deployment environment](docs/DEPLOYMENT-ENVIRONMENT.md) and [database access](docs/DATABASE-ACCESS.md)
+- [Navigation preloading and Dashboard](docs/NAVIGATION-PREFETCH.md)
+- [Scanner contract](docs/SCANNER-CONTRACT.md)
+- [Legacy cleanup and historical-document scope](docs/LEGACY-CLEANUP.md)
+
+Older PRDs, operations notes and test reports record earlier migration checkpoints. Their removed Next.js paths and npm commands are historical references; use this README and the current Java workflow for active build instructions.
