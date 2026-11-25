@@ -1,10 +1,21 @@
-# SHSID Online
+# Sider — Java / Spring Boot
 
 ## Java version
 
-The Java implementation is in `backend/`: **Java 21 + Spring Boot 4.1.2, native HTML/CSS/JavaScript, and PostgreSQL**. Local Maven verification has passed; the Java container has not been built or published on Launchpad, and production traffic has not been switched.
+The application on `main` is **Java 21 + Spring Boot 4.1.2, native HTML/CSS/JavaScript, and PostgreSQL**, implemented in `backend/`. The last verified production deployment was Java release v9 at [siderlearn.com](https://siderlearn.com) on 2026-11-13, from commit `1ce8c91`. This is a dated verification record, not a live availability check.
 
-- [Implementation and verification status](docs/JAVA-IMPLEMENTATION-STATUS.md), including completed local checks and remaining release gates
+| Path | Role |
+| --- | --- |
+| `backend/src/main/java/` | Current Java APIs, authentication, uploads and admin statistics |
+| `backend/src/main/resources/static/` | Current native frontend and preloaded admin Dashboard |
+| `backend/pom.xml`, `backend/Dockerfile`, `.launchpad/deploy.json` | Current build and deployment entry points |
+| `drizzle/`, `drizzle.config.ts`, `src/db/schema.ts` | Existing database migrations and schema tooling; migrations remain shared |
+| `services/malware-scanner/` | Independent Node.js malware scanner |
+| `app/`, `src/`, root Next.js configuration and `package.json` | Retained legacy Next.js application and tooling; not the Java runtime |
+
+The root npm commands and Docker/Compose files still belong to the legacy version. Use the Maven commands below for the current application. `.gitattributes` excludes the retained legacy application from GitHub language statistics while keeping the Java backend and native frontend in the statistics; it does not change file languages, build behavior or deployment.
+
+- [Implementation and verification status](docs/JAVA-IMPLEMENTATION-STATUS.md), a historical migration checkpoint; its pre-release statements predate the deployment recorded above
 
 - [Java migration PRD](docs/JAVA-MIGRATION-PRD.md)
 - [API design](docs/API-DESIGN.md) and [OpenAPI contract](docs/openapi.yaml)
@@ -26,7 +37,7 @@ The commands and implementation notes below describe the **legacy Next.js versio
 
 Implementation of the MVP in [`SHSID-Online-MVP-PRD.md`](./SHSID-Online-MVP-PRD.md).
 
-## Implemented
+## Legacy Next.js implementation (reference)
 
 - Next.js App Router, React, strict TypeScript, ESLint, and Vitest.
 - Drizzle/PostgreSQL schema and initial migration for users, sessions, OAuth transactions, resources, reports, and audit logs.
@@ -38,7 +49,7 @@ Implementation of the MVP in [`SHSID-Online-MVP-PRD.md`](./SHSID-Online-MVP-PRD.
 - Responsive login, search, upload, detail, “my uploads,” report, and administration pages based on the approved quiet document-tool visual direction.
 - Startup-time environment validation plus deployment, storage, scanner, lifecycle, recovery, monitoring, and rotation runbooks.
 
-## Local setup
+## Legacy local setup
 
 1. Copy `.env.example` to `.env.local` and replace every placeholder.
 2. Create PostgreSQL and run `npm run db:migrate` with the direct connection explicitly injected. The Drizzle CLI may read `.env`, but does not automatically read Next.js's `.env.local`; copying that file alone is insufficient for migration configuration.
@@ -59,7 +70,7 @@ Implementation coverage and the remaining production acceptance evidence are tra
 
 Launchpad-specific Variables, Secrets, OAuth registration, domain bridge, and release steps are listed in [`docs/LAUNCHPAD-SETUP.md`](./docs/LAUNCHPAD-SETUP.md).
 
-## Verification
+## Legacy verification
 
 ```powershell
 npm run typecheck
